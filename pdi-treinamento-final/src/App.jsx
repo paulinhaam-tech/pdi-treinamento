@@ -235,8 +235,6 @@ function PBar({value,max,cor,h=6}){
     <div style={{width:`${p}%`,height:"100%",background:cor||C.amber,borderRadius:99,transition:"width .4s"}}/>
   </div>;
 }
-function Campo({label,value,onChange,placeholder,multi,type}){
-
 
 // ── TELA LGPD ─────────────────────────────────────────────────────
 function TelaLGPD({next}){
