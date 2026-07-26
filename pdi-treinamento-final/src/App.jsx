@@ -3,7 +3,7 @@ import { useState } from "react";
 // ── CONFIG ────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
-const IANA_MAX = 2;
+const IANA_MAX = 1;
 
 async function verificarSenha(senha) {
   if (senha.toUpperCase() === "DEMO-2026") return { ok: true };
@@ -688,7 +688,7 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
     try{ const pts=calcPontos(d); await dbSalvar(d,pts); }catch(e){};
     try{
       if(!window.PptxGenJS){await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
-      const prs=new window.PptxGenJS();prs.layout="LAYOUT_16x9";
+      const prs=new window.PptxGenJS();prs.defineLayout({name:"CUSTOM",width:10,height:7.5});prs.layout="CUSTOM";
       const N="0F1D3A",NM="1A3160",NL="234080",AM="F5A623",WH="FFFFFF",SL="EEF2FA",SD="C5D0E6";
       const GR="1DB87A",TL="0891B2",PU="7C3AED",OR="EA580C",RE="E05252",PI="EC4899";
       const hoje=d.data?new Date(d.data+"T12:00:00").toLocaleDateString("pt-BR"):new Date().toLocaleDateString("pt-BR");
