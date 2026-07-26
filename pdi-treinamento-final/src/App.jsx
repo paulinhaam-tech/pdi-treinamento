@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 // ── CONFIG ────────────────────────────────────────────────────────
-const SUPABASE_URL = "COLE_SUA_URL_AQUI";
-const SUPABASE_KEY = "COLE_SUA_CHAVE_AQUI";
+const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
 const IANA_MAX = 2;
 
 async function verificarSenha(senha) {
