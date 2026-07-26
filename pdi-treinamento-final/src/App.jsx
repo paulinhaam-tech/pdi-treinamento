@@ -228,14 +228,6 @@ function calcPontos(d){
   return{total:c+q+v,completude:c,qualidade:q,vontade:v};
 }
 
-// ── UI HELPERS ────────────────────────────────────────────────────
-function PBar({value,max,cor,h=6}){
-  const p=max>0?Math.min(100,Math.round(value/max*100)):0;
-  return <div style={{background:C.slateDeep,borderRadius:99,height:h,overflow:"hidden"}}>
-    <div style={{width:`${p}%`,height:"100%",background:cor||C.amber,borderRadius:99,transition:"width .4s"}}/>
-  </div>;
-}
-
 // ── TELA LGPD ─────────────────────────────────────────────────────
 function TelaLGPD({next}){
   const [ok,setOk]=useState(false);
@@ -1300,15 +1292,6 @@ function TelaRevisao(){
       <div style={{fontWeight:800,fontSize:14,color:C.navy,marginBottom:8}}>Quer atualizar seu PDI completo?</div>
       <button onClick={()=>window.location.href=window.location.pathname} style={{padding:"10px 24px",background:C.navy,color:C.white,border:"none",borderRadius:10,fontWeight:800,fontSize:13,cursor:"pointer"}}>Ir para o PDI →</button>
     </div>
-  </div>;
-}
-
-// ── MENSAGEM MOTIVACIONAL ─────────────────────────────────────────
-function MsgMotivacional({etapa,onContinuar}){
-  return <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif",textAlign:"center"}}>
-    <div style={{fontSize:56,marginBottom:20}}>🌟</div>
-    <div style={{fontSize:18,fontWeight:700,color:C.white,lineHeight:1.5,maxWidth:300,marginBottom:32}}>{MSGS[etapa%MSGS.length]}</div>
-    <button onClick={onContinuar} style={{padding:"14px 40px",background:C.amber,color:C.navy,border:"none",borderRadius:12,fontWeight:800,fontSize:15,cursor:"pointer"}}>Continuar →</button>
   </div>;
 }
 
