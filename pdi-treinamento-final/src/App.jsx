@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ── CONFIG ────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
@@ -26,6 +26,7 @@ const C = {
   white:"#FFFFFF", green:"#1DB87A", red:"#E05252",
   text:"#0F1D3A", textMid:"#4A5A7A", textLight:"#8A9BBB",
   teal:"#0891B2", purple:"#7C3AED", orange:"#EA580C",
+  gold:"#F5C518", silver:"#C0C0C0", bronze:"#CD7F32",
 };
 
 // ── PRONOMES ──────────────────────────────────────────────────────
@@ -162,24 +163,21 @@ const RH_SENHA = "pdi2026rh";
 
 async function dbSalvar(d, pts) {
   if (!SUPABASE_URL.includes("supabase")) return false;
-  const gaps = HABILIDADES.flatMap(b=>b.itens)
-    .filter(it=>(d.habilidades[it.id]||0)<=2).map(it=>it.nome).slice(0,3).join(",");
+  const gaps = HABILIDADES.filter(h=>(d.habilidades[h.id]||0)<=2).map(h=>h.nome).slice(0,3).join(",");
   const areas = Object.entries(d.rodaVida)
-    .filter(([,v])=>v.nota<=4).map(([k])=>k).join(",");
+    .filter(([,v])=>(v.nota??5)<=4).map(([k])=>k).join(",");
   const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_ranking`,{
     method:"POST",
     headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,
       "Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"resolution=merge-duplicates"},
     body:JSON.stringify({
+      id:d._sid,
       pontos_total:pts.total, pontos_completude:pts.completude,
       pontos_qualidade:pts.qualidade, pontos_vontade:pts.vontade,
       nivel_vontade:d.vontade, energia_corpo:d.energia.corpo,
       energia_mente:d.energia.mente, energia_emocao:d.energia.emocao,
-      sabotador:d.autossabotagem.sabotadorEscolhido||"",
-      cargo_pretendido:d.objetivos.cargoPretendido||"",
-      alinhado_carreira:d.alinhamentoCarreira||null,
-      dificuldade_principal:d.dificuldadePrincipal||"",
-      apoia_desenvolvimento:d.apoioEmpresa||null,
+      sabotador:d.sabotadorPrincipal||"",
+      cargo_pretendido:d.objetivos.cargoShort||"",
       gaps_habilidades:gaps, areas_baixas_roda:areas,
       atualizado_em:new Date().toISOString(),
     })
@@ -200,28 +198,29 @@ function calcPontos(d){
   let c=0,q=0;
   const add=(v,n)=>{if(v)c+=n;};
   add(d.nome,10);add(d.intencao,15);add(d.sobreMim.frase,15);
-  add(d.sobreMim.superpoder,15);add(d.sobreMim.pontoTreino,15);add(d.sobreMim.inspira,10);
+  add(d.sobreMim.inspiracoes?.length>0,15);
   add(d.conquistas.c1,15);add(d.conquistas.c2,15);add(d.conquistas.c3,15);
-  add(d.jornada.formacoes,15);add(d.jornada.aprendizado,15);
-  add(d.objetivos.vida,20);add(d.objetivos.legado,20);
-  if(d.swot.forcas&&d.swot.fraquezas&&d.swot.oportunidades&&d.swot.ameacas)c+=30;
+  add(d.jornada.formacoes,15);add(d.jornada.marcos?.some(m=>m.titulo),15);
+  add(d.objetivos.cargoShort,10);add(d.objetivos.legado,20);
+  if(d.swot.forcas.length&&d.swot.fraquezas.length&&d.swot.oportunidades.length&&d.swot.ameacas.length)c+=30;
   c+=Math.min(Object.values(d.habilidades).filter(v=>v>0).length*2,20);
-  c+=Object.values(d.rodaVida).filter(r=>r.melhorar?.length>2).length*3;
-  add(d.dificuldadePrincipal,10);
-  c+=Math.min(d.planoAcao.pessoal.filter(a=>a.oq).length*8,24);
-  c+=Math.min(d.planoAcao.profissional.filter(a=>a.oq).length*8,24);
-  add(d.autossabotagem.sabotadorEscolhido,15);add(d.autossabotagem.meta,15);
-  add(d.medidaSucesso.p1,10);add(d.fraseF?.length>10,15);
+  c+=Math.min(Object.values(d.rodaVida).filter(r=>r.melhorar?.length>2).length*3,24);
+  add(d.sabotadorPrincipal,10);
+  c+=Math.min([d.plano30,d.plano60,d.plano90].filter(p=>p.oq).length*8,24);
+  add(d.sabotadorPrincipal,15);add(d.sabMeta,15);
+  add(d.medida1,10);add(d.fraseF?.length>10,15);
   c=Math.min(c,300);
-  [d.intencao,d.sobreMim.frase,d.sobreMim.superpoder,d.sobreMim.pontoTreino,
+  [d.intencao,d.sobreMim.frase,
    d.conquistas.c1,d.conquistas.c2,d.conquistas.c3,d.jornada.formacoes,
-   d.jornada.aprendizado,d.objetivos.vida,d.objetivos.legado,
-   d.swot.forcas,d.swot.fraquezas,d.autossabotagem.naoAtrapalhar,
-   d.medidaSucesso.p1,d.medidaSucesso.p2,d.medidaSucesso.p3,
+   d.objetivos.legado,
+   d.swot.forcasOutros,d.swot.fraquezasOutros,d.sabComo,
+   d.medida1,d.medida2,d.medida3,
   ].forEach(t=>{if(!t)return;if(t.length>150)q+=18;else if(t.length>80)q+=10;else if(t.length>30)q+=5;});
   q=Math.min(q,300);
   const v=Math.round(d.vontade*10);
-  return{total:c+q+v,completude:c,qualidade:q,vontade:v};
+  const minutos=d._inicio?Math.min((Date.now()-d._inicio)/60000,20):0;
+  const dedicacao=Math.round(Math.min(minutos*1.5,30));
+  return{total:c+q+v+dedicacao,completude:c,qualidade:q,vontade:v,dedicacao};
 }
 
 // ── UI HELPERS ────────────────────────────────────────────────────
@@ -718,7 +717,7 @@ function TelaConclusao({d,set}){
       const swotFraquezas=[...d.swot.fraquezas,d.swot.fraquezasOutros].filter(Boolean).join(", ")||"não preenchido";
       const pr2=getPronomes(d.genero);
       const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1000,messages:[{role:"user",content:
+        body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1300,messages:[{role:"user",content:
           `Você é a IANA, mentora de carreira experiente e calorosa. Analise o PDI (Plano de Desenvolvimento Individual) abaixo e escreva uma devolutiva em português do Brasil.
 
 DADOS DA PESSOA:
@@ -740,17 +739,26 @@ DADOS DA PESSOA:
 
 Use o pronome correto para se referir à pessoa: ${pr2.ele==="ela"?"ela/dela/sua":pr2.ele==="ele"?"ele/dele/seu":"a pessoa, evitando pronomes de gênero"}.
 
-Escreva EXATAMENTE nesta estrutura, com os títulos em negrito (markdown **texto**), sem introdução nem despedida genérica:
+REGRA MAIS IMPORTANTE: cada conselho precisa ser específico o suficiente para a pessoa saber exatamente o que fazer amanhã de manhã. Proibido dar conselho genérico que serviria para qualquer pessoa (ex: "invista em desenvolvimento", "busque equilíbrio", "continue se esforçando"). Todo conselho deve nomear uma ação concreta, ligada a pelo menos 2 dados específicos da pessoa ao mesmo tempo (ex: cruzar o sabotador com um gap de habilidade, ou cruzar uma força do SWOT com a meta de curto prazo).
 
-**Leitura do momento** — 2-3 frases conectando a energia atual, a intenção e a área mais frágil da Roda da Vida. Seja específico, cite os dados reais.
+Escreva EXATAMENTE nesta estrutura. Use o emoji e o título de cada seção exatamente como abaixo, sem usar markdown, asteriscos ou qualquer outro símbolo de formatação — apenas texto puro:
 
-**Sua principal alavanca** — 2-3 frases apontando a conexão mais forte entre o sabotador principal, um gap de habilidade e uma força do SWOT. Dê um conselho concreto e acionável, não genérico.
+🔍 Leitura do momento
+2-3 frases conectando a energia atual, a intenção e a área mais frágil da Roda da Vida. Seja específico, cite os dados reais.
 
-**Prioridade dos próximos 90 dias** — 2-3 frases avaliando se os planos de 30/60/90 dias são realistas e conectados ao legado declarado. Se algo não foi preenchido, diga isso com gentileza e sugira o que preencher.
+🎯 Sua principal alavanca
+2-3 frases cruzando o sabotador principal com um gap de habilidade E uma força do SWOT ao mesmo tempo. Nomeie uma ação prática e específica que a pessoa pode testar essa semana para transformar essa combinação em resultado — não apenas "desenvolva X", mas como e onde aplicar isso no dia a dia dela.
 
-**Uma coisa para lembrar** — 1-2 frases de encorajamento genuíno, específico à situação dessa pessoa (não uma frase motivacional genérica).
+📈 O que vai fazer diferença na sua carreira
+2-3 frases apontando o gap de habilidade OU comportamento que, se não for endereçado, mais provavelmente vai travar essa pessoa nos próximos 1-2 anos rumo à meta de curto prazo dela. Seja direto mesmo que seja um ponto sensível — isso é mais útil do que só elogiar.
 
-Tom: humano, direto, específico aos dados — nunca genérico. Máximo 260 palavras no total.`
+🗓️ Prioridade dos próximos 90 dias
+2-3 frases avaliando se os planos de 30/60/90 dias são realistas e conectados ao legado declarado. Se algo não foi preenchido, diga isso com gentileza e sugira o que preencher.
+
+✨ Uma coisa para lembrar
+1-2 frases de encorajamento genuíno, específico à situação dessa pessoa (não uma frase motivacional genérica).
+
+Tom: humano, direto, específico aos dados — nunca genérico. Máximo 340 palavras no total.`
         }]})});
       const data=await r.json();
       setIaText(data.content?.[0]?.text||"");
@@ -1257,19 +1265,15 @@ function DashboardRH(){
   const mediaCorpo=media(dados.map(d=>d.energia_corpo||0));
   const mediaMente=media(dados.map(d=>d.energia_mente||0));
   const mediaEmocao=media(dados.map(d=>d.energia_emocao||0));
-  const mediaApoio=media(dados.filter(d=>d.apoia_desenvolvimento).map(d=>d.apoia_desenvolvimento));
   const mediaPts=media(dados.map(d=>d.pontos_total||0));
+  const mediaQualidade=media(dados.map(d=>d.pontos_qualidade||0));
+  const mediaCompletude=media(dados.map(d=>d.pontos_completude||0));
   const count=(arr,key)=>arr.reduce((acc,d)=>{const v=d[key];if(v)acc[v]=(acc[v]||0)+1;return acc;},{});
   const topN=(obj,n)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
   const sabCount=count(dados,"sabotador");
-  const difCount=count(dados,"dificuldade_principal");
   const cargoCount=count(dados,"cargo_pretendido");
   const gapCount={}; dados.forEach(d=>(d.gaps_habilidades||"").split(",").map(g=>g.trim()).filter(Boolean).forEach(g=>{gapCount[g]=(gapCount[g]||0)+1;}));
   const areaCount={}; dados.forEach(d=>(d.areas_baixas_roda||"").split(",").map(a=>a.trim()).filter(Boolean).forEach(a=>{areaCount[a]=(areaCount[a]||0)+1;}));
-  const alinhados=dados.filter(d=>d.alinhado_carreira==="Sim, estou alinhado").length;
-  const parcial=dados.filter(d=>d.alinhado_carreira==="Parcialmente").length;
-  const desalinhados=dados.filter(d=>d.alinhado_carreira==="Não, quero mudar de área").length;
-  const riscoSaida=dados.filter(d=>(d.nivel_vontade||5)<5&&d.alinhado_carreira==="Não, quero mudar de área").length;
 
   const card={background:C.white,borderRadius:14,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(15,29,58,.07)"};
   const bar=(v,max,cor)=><div style={{background:C.slateDeep,borderRadius:99,height:8,overflow:"hidden",flex:1}}>
@@ -1288,7 +1292,7 @@ function DashboardRH(){
       {/* Visão Geral */}
       <div style={{fontWeight:700,fontSize:11,color:C.textMid,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Visão Geral</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        {[{l:"Participantes",v:dados.length,ic:"👥",cor:C.teal},{l:"Média de Pontos",v:mediaPts,ic:"🏆",cor:C.amber},{l:"Média de Vontade",v:`${mediaVontade}/10`,ic:"🔥",cor:C.green},{l:"Risco de Saída",v:riscoSaida,ic:"⚠️",cor:C.red}].map(m=>(
+        {[{l:"Participantes",v:dados.length,ic:"👥",cor:C.teal},{l:"Média de Pontos",v:mediaPts,ic:"🏆",cor:C.amber},{l:"Média de Vontade",v:`${mediaVontade}/10`,ic:"🔥",cor:C.green},{l:"Média de Qualidade",v:mediaQualidade,ic:"✨",cor:C.purple}].map(m=>(
           <div key={m.l} style={{...card,borderLeft:`4px solid ${m.cor}`,margin:0}}>
             <div style={{fontSize:18,marginBottom:4}}>{m.ic}</div>
             <div style={{fontSize:24,fontWeight:800,color:m.cor}}>{m.v}</div>
@@ -1308,20 +1312,6 @@ function DashboardRH(){
         ))}
       </div>
 
-      {/* Alinhamento */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🎯 Alinhamento de Carreira</div>
-        <div style={{display:"flex",gap:8,marginBottom:10}}>
-          {[{l:"✅ Alinhados",v:alinhados,c:C.green},{l:"⚡ Parcial",v:parcial,c:C.amber},{l:"🔄 Quer mudar",v:desalinhados,c:C.red}].map(a=>(
-            <div key={a.l} style={{flex:1,textAlign:"center",background:`${a.c}15`,borderRadius:10,padding:"10px 6px",border:`1px solid ${a.c}44`}}>
-              <div style={{fontSize:18,fontWeight:800,color:a.c}}>{a.v}</div>
-              <div style={{fontSize:10,color:C.textMid,marginTop:2}}>{a.l}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{fontSize:11,color:C.textMid}}>Apoio percebido da empresa: <strong style={{color:C.navy}}>{mediaApoio}/5</strong></div>
-      </div>
-
       {/* Sabotadores */}
       <div style={card}>
         <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🛡️ Sabotadores mais comuns</div>
@@ -1331,20 +1321,6 @@ function DashboardRH(){
             <div style={{display:"flex",alignItems:"center",gap:8,width:120}}>
               {bar(cnt,n,C.amber)}
               <span style={{fontSize:12,fontWeight:700,color:C.amber,minWidth:32}}>{Math.round((cnt/n)*100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Dificuldades */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🚧 Principais dificuldades de desenvolvimento</div>
-        {topN(difCount,4).map(([dif,cnt])=>(
-          <div key={dif} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.slate}`}}>
-            <span style={{fontSize:11,flex:1}}>{dif}</span>
-            <div style={{display:"flex",alignItems:"center",gap:8,width:100}}>
-              {bar(cnt,n,C.red)}
-              <span style={{fontSize:12,fontWeight:700,color:C.red,minWidth:32}}>{Math.round((cnt/n)*100)}%</span>
             </div>
           </div>
         ))}
@@ -1394,7 +1370,7 @@ function DashboardRH(){
       <div style={card}>
         <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:8}}>🗺️ Índice de Clima de Desenvolvimento</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {[{l:"Média Vontade",v:`${mediaVontade}/10`,c:C.amber},{l:"Apoio Empresa",v:`${mediaApoio}/5`,c:C.teal},{l:"Concluíram",v:`${dados.length}`,c:C.green},{l:"Risco Saída",v:riscoSaida,c:C.red}].map(m=>(
+          {[{l:"Média Vontade",v:`${mediaVontade}/10`,c:C.amber},{l:"Média Completude",v:mediaCompletude,c:C.teal},{l:"Concluíram",v:`${dados.length}`,c:C.green},{l:"Média Qualidade",v:mediaQualidade,c:C.purple}].map(m=>(
             <div key={m.l} style={{background:C.slate,borderRadius:10,padding:"10px 12px"}}>
               <div style={{fontSize:9,color:C.textMid,marginBottom:4}}>{m.l}</div>
               <div style={{fontSize:20,fontWeight:800,color:m.c}}>{m.v}</div>
@@ -1402,12 +1378,6 @@ function DashboardRH(){
           ))}
         </div>
       </div>
-
-      {riscoSaida>0&&<div style={{...card,borderLeft:`4px solid ${C.red}`}}>
-        <div style={{fontWeight:700,fontSize:13,color:C.red,marginBottom:8}}>⚠️ Índice de Risco de Saída</div>
-        <div style={{fontSize:12,color:C.textMid,lineHeight:1.6,marginBottom:8}}><strong>{riscoSaida} participante(s)</strong> com baixa vontade + desalinhamento de carreira. Recomenda-se atenção no acompanhamento.</div>
-        <div style={{fontSize:10,color:C.textMid,fontStyle:"italic"}}>* Dados 100% anônimos. Nenhuma pessoa identificada individualmente.</div>
-      </div>}
 
       <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:C.textLight}}>
         🔒 Relatório anônimo · PDI na Prática<br/>Atualização automática a cada 30s
@@ -1450,11 +1420,15 @@ export default function App(){
   if(qs.includes("revisao=1"))return <TelaRevisao/>;
 
   const[etapa,setEtapa]=useState(0);
-  const[dados,setDados]=useState(INICIAL);
+  const[dados,setDados]=useState(()=>({...INICIAL,
+    _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    _inicio:Date.now(),
+  }));
   const[showMsg,setShowMsg]=useState(false);
   const[proxEtapa,setProxEtapa]=useState(0);
 
   function ir(p){
+    try{ dbSalvar(dados,calcPontos(dados)); }catch(e){}
     if(p>2&&p%3===0&&p<telas.length-1){setProxEtapa(p);setShowMsg(true);}
     else setEtapa(p);
   }
