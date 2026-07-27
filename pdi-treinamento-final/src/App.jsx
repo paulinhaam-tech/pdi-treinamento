@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 // ── CONFIG ────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
-const IANA_MAX = 1;
 
 async function verificarSenha(senha) {
   if (senha.toUpperCase() === "DEMO-2026") return { ok: true };
@@ -701,72 +700,6 @@ function TelaCompromisso({d,set,next,prev}){
 function TelaConclusao({d,set}){
   const [dlLoad,setDlLoad]=useState(false);
   const [dlMsg,setDlMsg]=useState("");
-  const [iaLoad,setIaLoad]=useState(false);
-  const [iaText,setIaText]=useState("");
-  const ianaUsos=parseInt(localStorage.getItem("iana_usos_hotmart")||"0");
-  const pr=getPronomes(d.genero);
-
-  async function gerarIANA(){
-    if(ianaUsos>=IANA_MAX)return;
-    setIaLoad(true);
-    try{
-      const gapsHab=HABILIDADES.filter(h=>(d.habilidades[h.id]||0)<=2).map(h=>h.nome).join(", ")||"nenhum gap crítico identificado";
-      const fortesHab=HABILIDADES.filter(h=>(d.habilidades[h.id]||0)>=4).map(h=>h.nome).join(", ")||"nenhuma habilidade avaliada como forte ainda";
-      const areasRodaBaixas=Object.entries(d.rodaVida).sort((a,b)=>(a[1].nota||0)-(b[1].nota||0)).slice(0,2).map(([a,v])=>`${a} (${v.nota}/10)`).join(", ");
-      const swotForcas=[...d.swot.forcas,d.swot.forcasOutros].filter(Boolean).join(", ")||"não preenchido";
-      const swotFraquezas=[...d.swot.fraquezas,d.swot.fraquezasOutros].filter(Boolean).join(", ")||"não preenchido";
-      const pr2=getPronomes(d.genero);
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1300,messages:[{role:"user",content:
-          `Você é a IANA, mentora de carreira experiente e calorosa. Analise o PDI (Plano de Desenvolvimento Individual) abaixo e escreva uma devolutiva em português do Brasil.
-
-DADOS DA PESSOA:
-- Nome: ${d.nome||"não informado"} | Cargo atual: ${d.cargo||"não informado"} | Gênero: ${d.genero||"não informado"}
-- Intenção declarada: "${d.intencao||"não preenchida"}"
-- Energia hoje (escala 1-5): corpo ${d.energia.corpo}, mente ${d.energia.mente}, emoção ${d.energia.emocao}
-- Nível de vontade de mudar: ${d.vontade}/10
-- Maior conquista recente: "${d.conquistas.c1||"não preenchida"}"
-- Legado que quer construir: "${d.objetivos.legado||"não preenchido"}"
-- Meta de curto prazo: ${d.objetivos.cargoShort||"não preenchida"}
-- Forças (SWOT): ${swotForcas}
-- Pontos de desenvolvimento (SWOT): ${swotFraquezas}
-- Habilidades fortes (WEF 2025): ${fortesHab}
-- Gaps de habilidade (WEF 2025): ${gapsHab}
-- Áreas mais baixas na Roda da Vida: ${areasRodaBaixas||"não preenchido"}
-- Sabotador principal (Chamine): ${d.sabotadorPrincipal||"não identificado"}
-- Compromisso dos próximos 7 dias: "${d.compromisso7dias||"não preenchido"}"
-- Ação 30 dias: "${d.plano30.oq||"não preenchida"}" | 60 dias: "${d.plano60.oq||"não preenchida"}" | 90 dias: "${d.plano90.oq||"não preenchida"}"
-
-Use o pronome correto para se referir à pessoa: ${pr2.ele==="ela"?"ela/dela/sua":pr2.ele==="ele"?"ele/dele/seu":"a pessoa, evitando pronomes de gênero"}.
-
-REGRA MAIS IMPORTANTE: cada conselho precisa ser específico o suficiente para a pessoa saber exatamente o que fazer amanhã de manhã. Proibido dar conselho genérico que serviria para qualquer pessoa (ex: "invista em desenvolvimento", "busque equilíbrio", "continue se esforçando"). Todo conselho deve nomear uma ação concreta, ligada a pelo menos 2 dados específicos da pessoa ao mesmo tempo (ex: cruzar o sabotador com um gap de habilidade, ou cruzar uma força do SWOT com a meta de curto prazo).
-
-Escreva EXATAMENTE nesta estrutura. Use o emoji e o título de cada seção exatamente como abaixo, sem usar markdown, asteriscos ou qualquer outro símbolo de formatação — apenas texto puro:
-
-🔍 Leitura do momento
-2-3 frases conectando a energia atual, a intenção e a área mais frágil da Roda da Vida. Seja específico, cite os dados reais.
-
-🎯 Sua principal alavanca
-2-3 frases cruzando o sabotador principal com um gap de habilidade E uma força do SWOT ao mesmo tempo. Nomeie uma ação prática e específica que a pessoa pode testar essa semana para transformar essa combinação em resultado — não apenas "desenvolva X", mas como e onde aplicar isso no dia a dia dela.
-
-📈 O que vai fazer diferença na sua carreira
-2-3 frases apontando o gap de habilidade OU comportamento que, se não for endereçado, mais provavelmente vai travar essa pessoa nos próximos 1-2 anos rumo à meta de curto prazo dela. Seja direto mesmo que seja um ponto sensível — isso é mais útil do que só elogiar.
-
-🗓️ Prioridade dos próximos 90 dias
-2-3 frases avaliando se os planos de 30/60/90 dias são realistas e conectados ao legado declarado. Se algo não foi preenchido, diga isso com gentileza e sugira o que preencher.
-
-✨ Uma coisa para lembrar
-1-2 frases de encorajamento genuíno, específico à situação dessa pessoa (não uma frase motivacional genérica).
-
-Tom: humano, direto, específico aos dados — nunca genérico. Máximo 340 palavras no total.`
-        }]})});
-      const data=await r.json();
-      setIaText(data.content?.[0]?.text||"");
-      localStorage.setItem("iana_usos_hotmart",String(ianaUsos+1));
-    }catch(e){console.error(e);}
-    setIaLoad(false);
-  }
-
   async function baixar(){
     setDlLoad(true);setDlMsg("");
     // Salvar no ranking ao baixar o PPTX
@@ -806,8 +739,8 @@ Tom: humano, direto, específico aos dados — nunca genérico. Máximo 340 pala
           {x:.67,y:1.38+i*.245,w:6.667,h:.22,fontSize:9,fontFace:"Calibri",margin:0});
       });
       sl.addText("Para reexibir depois: botão direito → \u201cOcultar Slide\u201d de novo.",{x:.67,y:2.15,w:6.667,h:.21,fontSize:8,italic:true,color:"4A3A12",fontFace:"Calibri",margin:0});
-      sl.addText("📌  São 5 slides pra ocultar:",{x:7.96,y:1.0,w:4.653,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
-      sl.addText("Repita os passos ao lado para estes 5 slides de uso pessoal: Ponto de Partida, Roda da Vida, Compromisso, a mensagem da IANA e este aqui (Como apresentar). Nenhum vem oculto automaticamente.",
+      sl.addText("📌  São 4 slides pra ocultar:",{x:7.96,y:1.0,w:4.653,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addText("Repita os passos ao lado para estes 4 slides de uso pessoal: Ponto de Partida, Roda da Vida, Compromisso e este aqui (Como apresentar). Nenhum vem oculto automaticamente.",
         {x:7.96,y:1.33,w:4.653,h:.9,fontSize:8,color:"24324F",fontFace:"Calibri",margin:0});
       sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.44,w:6.453,h:3.07,fill:{color:NL},rectRadius:.12});
       sl.addText("📋  Sequência para apresentar",{x:.62,y:2.61,w:5.8,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
@@ -1101,17 +1034,6 @@ Tom: humano, direto, específico aos dados — nunca genérico. Máximo 340 pala
         sl.addText(m.v,{x:1.733,y,w:10.8,h:.7,fontSize:13,color:WH,fontFace:"Calibri",valign:"middle",margin:3});});
       sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:6.62,w:12.267,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
 
-      // ── S13 IANA (oculto) ─────────────────────────────────────
-      {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:6.667,h:5.0,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.45,y:.3,w:2.133,h:1.6,fill:{color:NM},rectRadius:.25});
-      sl.addText("🤖",{x:.45,y:.3,w:2.133,h:1.6,fontSize:40,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addText("IANA",{x:3,y:.35,w:6.667,h:.65,fontSize:34,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText("IA da Ana  ·  Sua mentora de desenvolvimento",{x:3,y:1.02,w:9.733,h:.35,fontSize:12,color:SD,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:.45,y:1.55,w:12.133,h:.04,fill:{color:AM},line:{color:AM}});
-      sl.addText(iaText||`${d.nome||"[Nome]"}, você construiu um PDI com clareza e coragem que poucas pessoas alcançam. Como ${pr2.ele?"sua":""} mentora, deixo 3 movimentos para transformar esse plano em resultado:\n\n⚖️ Equilíbrio antes de velocidade — Bloqueie no calendário 1 momento de descanso inegociável por semana.\n\n🎯 Uma prioridade de cada vez — Escolha UMA ação para os próximos 30 dias e vá fundo.\n\n📣 Compromisso com testemunha — Apresente seu PDI a alguém de confiança e peça check-in mensal.\n\nCrescimento sustentável pede consistência, não velocidade. ✨`,{x:.5,y:1.68,w:12,h:5.0,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:0});
-      sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:7.05,w:12.267,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
-
       // ── S14 FRASE FINAL ───────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
       sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:8.667,h:6.5,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
@@ -1142,25 +1064,10 @@ Tom: humano, direto, específico aos dados — nunca genérico. Máximo 340 pala
         style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${C.amber}`,borderRadius:10,fontSize:13,outline:"none",background:C.slate,fontFamily:"inherit",resize:"vertical",minHeight:65,fontStyle:"italic"}}/>
     </Card>
 
-    <Card style={{background:`linear-gradient(135deg,${C.navyMid},${C.navyLight})`,border:`2px solid ${C.amber}44`}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-        <span style={{fontSize:26}}>🤖</span>
-        <div>
-          <div style={{fontWeight:800,fontSize:14,color:C.amber}}>IANA — Sua Mentora de IA</div>
-          <div style={{fontSize:10,color:C.slateDeep}}>{IANA_MAX-ianaUsos} análise(s) disponível(is)</div>
-        </div>
-      </div>
-      {ianaUsos>=IANA_MAX
-        ?<div style={{background:C.navyLight,borderRadius:10,padding:12,fontSize:12,color:C.slateDeep,textAlign:"center"}}>Análises utilizadas. O resultado já está no seu PowerPoint! 💪</div>
-        :!iaText
-          ?<button onClick={gerarIANA} disabled={iaLoad} style={{width:"100%",padding:11,background:iaLoad?C.navyLight:C.amber,color:iaLoad?C.slateDeep:C.navy,border:"none",borderRadius:9,fontWeight:800,fontSize:13,cursor:iaLoad?"default":"pointer"}}>{iaLoad?"⏳ Analisando seu PDI...":"✨ Gerar análise da IANA"}</button>
-          :<div style={{fontSize:12,color:C.white,lineHeight:1.7}}>{iaText}</div>}
-    </Card>
-
     <Card>
       <Titulo>📥 Baixar seu PDI em PowerPoint</Titulo>
       <div style={{fontSize:11,color:C.textMid,marginBottom:12,lineHeight:1.6}}>
-        16 slides profissionais — inclui slides ocultos para uso pessoal (5W2H, cronograma, compromisso e IANA). Abra no PowerPoint ou Google Slides e edite como quiser!
+        15 slides profissionais — inclui slides ocultos para uso pessoal (ponto de partida, roda da vida, compromisso). Abra no PowerPoint ou Google Slides e edite como quiser!
       </div>
       <button onClick={baixar} disabled={dlLoad} style={{width:"100%",padding:14,background:dlLoad?C.slateDeep:C.navy,color:dlLoad?C.textMid:C.white,border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:dlLoad?"default":"pointer"}}>
         {dlLoad?"⏳ Gerando seu PowerPoint...":"📊 Baixar PDI (.pptx)"}
@@ -1240,11 +1147,50 @@ function DashboardRH(){
   const [ok,setOk]=useState(false);
   const [dados,setDados]=useState([]);
   const [loading,setLoading]=useState(false);
+  const [limpando,setLimpando]=useState(false);
   const ref=useRef(null);
 
   async function carregar(){setLoading(true);const data=await dbRanking();setDados(data);setLoading(false);}
   function entrar(){if(senha===RH_SENHA){setOk(true);carregar();ref.current=setInterval(carregar,30000);}else alert("Senha incorreta");}
   useEffect(()=>()=>clearInterval(ref.current),[]);
+
+  function exportarCSV(){
+    if(dados.length===0){alert("Não há dados para exportar ainda.");return;}
+    const colunas=["pontos_total","pontos_completude","pontos_qualidade","pontos_vontade","nivel_vontade",
+      "energia_corpo","energia_mente","energia_emocao","sabotador","cargo_pretendido",
+      "gaps_habilidades","areas_baixas_roda","atualizado_em"];
+    const linhas=[colunas.join(",")];
+    dados.forEach(d=>{
+      const linha=colunas.map(c=>{
+        const v=d[c]??"";
+        const s=String(v).replace(/"/g,'""');
+        return /[,"\n]/.test(s)?`"${s}"`:s;
+      }).join(",");
+      linhas.push(linha);
+    });
+    const csv="\uFEFF"+linhas.join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const hoje=new Date().toISOString().slice(0,10);
+    a.href=url;a.download=`relatorio_pdi_${hoje}.csv`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function limparTurma(){
+    if(!confirm(`Isso vai apagar os dados de ${dados.length} participante(s) do ranking e do dashboard, para começar a próxima turma do zero.\n\nJá exportou o CSV desta turma? Essa ação não pode ser desfeita.\n\nConfirma que quer limpar?`))return;
+    setLimpando(true);
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/pdi_ranking?id=not.is.null`,{
+        method:"DELETE",
+        headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
+      });
+      if(res.ok){await carregar();alert("Pronto! Dados limpos. Pode começar a próxima turma.");}
+      else alert("Não consegui limpar os dados. Tente novamente ou verifique a conexão.");
+    }catch(e){alert("Erro ao limpar os dados. Tente novamente.");}
+    setLimpando(false);
+  }
 
   if(!ok)return <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Inter',sans-serif"}}>
     <div style={{background:C.navyMid,borderRadius:16,padding:32,width:320,textAlign:"center"}}>
@@ -1286,6 +1232,10 @@ function DashboardRH(){
       <div style={{fontSize:22,fontWeight:800,color:C.white,marginBottom:4}}>Relatório do Treinamento PDI</div>
       <div style={{fontSize:11,color:C.slateDeep}}>{dados.length} participantes · Atualização a cada 30s</div>
       <div style={{marginTop:10,fontSize:10,color:C.amber,background:`${C.amber}18`,borderRadius:8,padding:"6px 10px",display:"inline-block"}}>🔒 Todos os dados são anônimos (LGPD)</div>
+      <div style={{display:"flex",gap:8,marginTop:14}}>
+        <button onClick={exportarCSV} style={{flex:1,padding:"10px 12px",background:C.amber,color:C.navy,border:"none",borderRadius:10,fontWeight:800,fontSize:12,cursor:"pointer"}}>⬇️ Exportar CSV desta turma</button>
+        <button onClick={limparTurma} disabled={limpando} style={{flex:1,padding:"10px 12px",background:"transparent",color:C.white,border:`1.5px solid ${C.slateDeep}`,borderRadius:10,fontWeight:700,fontSize:12,cursor:limpando?"default":"pointer"}}>{limpando?"⏳ Limpando...":"🔄 Iniciar próxima turma"}</button>
+      </div>
     </div>
     <div style={{padding:14}}>
 
