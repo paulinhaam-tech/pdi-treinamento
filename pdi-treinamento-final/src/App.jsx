@@ -1317,7 +1317,7 @@ function DashboardRH(){
         <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🛡️ Sabotadores mais comuns</div>
         {topN(sabCount,3).map(([sab,cnt])=>(
           <div key={sab} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.slate}`}}>
-            <span style={{fontSize:11,fontWeight:600,flex:1}}>{SABOTADORES.find(s=>s.nome===sab)?.emoji} {sab}</span>
+            <span style={{fontSize:11,fontWeight:600,flex:1}}>{QUIZ_SABOTADORES.find(s=>s.sab===sab)?.emoji} {sab}</span>
             <div style={{display:"flex",alignItems:"center",gap:8,width:120}}>
               {bar(cnt,n,C.amber)}
               <span style={{fontSize:12,fontWeight:700,color:C.amber,minWidth:32}}>{Math.round((cnt/n)*100)}%</span>
