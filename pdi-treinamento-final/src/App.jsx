@@ -711,13 +711,46 @@ function TelaConclusao({d,set}){
     if(ianaUsos>=IANA_MAX)return;
     setIaLoad(true);
     try{
-      const gaps=HABILIDADES.filter(h=>(d.habilidades[h.id]||0)<=2).map(h=>h.nome).slice(0,3).join(",")||"nenhum";
+      const gapsHab=HABILIDADES.filter(h=>(d.habilidades[h.id]||0)<=2).map(h=>h.nome).join(", ")||"nenhum gap crítico identificado";
+      const fortesHab=HABILIDADES.filter(h=>(d.habilidades[h.id]||0)>=4).map(h=>h.nome).join(", ")||"nenhuma habilidade avaliada como forte ainda";
+      const areasRodaBaixas=Object.entries(d.rodaVida).sort((a,b)=>(a[1].nota||0)-(b[1].nota||0)).slice(0,2).map(([a,v])=>`${a} (${v.nota}/10)`).join(", ");
+      const swotForcas=[...d.swot.forcas,d.swot.forcasOutros].filter(Boolean).join(", ")||"não preenchido";
+      const swotFraquezas=[...d.swot.fraquezas,d.swot.fraquezasOutros].filter(Boolean).join(", ")||"não preenchido";
+      const pr2=getPronomes(d.genero);
       const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,messages:[{role:"user",content:
-          `Você é a IANA — mentora de PDI. Analise o PDI em português.
-Dados: Nome: ${d.nome} | Gênero: ${d.genero} | Vontade ${d.vontade}/10 | Sabotador: ${d.sabotadorPrincipal||"não identificado"} | Gaps: ${gaps} | Legado: ${d.objetivos.legado||"não preenchido"}
-Use o pronome correto: ${d.genero==="Feminino"?"ela/dela/sua":d.genero==="Masculino"?"ele/dele/seu":"a pessoa"}.
-Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal baseada no sabotador e gaps 3)encorajamento. Máx 120 palavras. Tom humano, caloroso e direto.`
+        body:JSON.stringify({model:"claude-sonnet-5",max_tokens:1000,messages:[{role:"user",content:
+          `Você é a IANA, mentora de carreira experiente e calorosa. Analise o PDI (Plano de Desenvolvimento Individual) abaixo e escreva uma devolutiva em português do Brasil.
+
+DADOS DA PESSOA:
+- Nome: ${d.nome||"não informado"} | Cargo atual: ${d.cargo||"não informado"} | Gênero: ${d.genero||"não informado"}
+- Intenção declarada: "${d.intencao||"não preenchida"}"
+- Energia hoje (escala 1-5): corpo ${d.energia.corpo}, mente ${d.energia.mente}, emoção ${d.energia.emocao}
+- Nível de vontade de mudar: ${d.vontade}/10
+- Maior conquista recente: "${d.conquistas.c1||"não preenchida"}"
+- Legado que quer construir: "${d.objetivos.legado||"não preenchido"}"
+- Meta de curto prazo: ${d.objetivos.cargoShort||"não preenchida"}
+- Forças (SWOT): ${swotForcas}
+- Pontos de desenvolvimento (SWOT): ${swotFraquezas}
+- Habilidades fortes (WEF 2025): ${fortesHab}
+- Gaps de habilidade (WEF 2025): ${gapsHab}
+- Áreas mais baixas na Roda da Vida: ${areasRodaBaixas||"não preenchido"}
+- Sabotador principal (Chamine): ${d.sabotadorPrincipal||"não identificado"}
+- Compromisso dos próximos 7 dias: "${d.compromisso7dias||"não preenchido"}"
+- Ação 30 dias: "${d.plano30.oq||"não preenchida"}" | 60 dias: "${d.plano60.oq||"não preenchida"}" | 90 dias: "${d.plano90.oq||"não preenchida"}"
+
+Use o pronome correto para se referir à pessoa: ${pr2.ele==="ela"?"ela/dela/sua":pr2.ele==="ele"?"ele/dele/seu":"a pessoa, evitando pronomes de gênero"}.
+
+Escreva EXATAMENTE nesta estrutura, com os títulos em negrito (markdown **texto**), sem introdução nem despedida genérica:
+
+**Leitura do momento** — 2-3 frases conectando a energia atual, a intenção e a área mais frágil da Roda da Vida. Seja específico, cite os dados reais.
+
+**Sua principal alavanca** — 2-3 frases apontando a conexão mais forte entre o sabotador principal, um gap de habilidade e uma força do SWOT. Dê um conselho concreto e acionável, não genérico.
+
+**Prioridade dos próximos 90 dias** — 2-3 frases avaliando se os planos de 30/60/90 dias são realistas e conectados ao legado declarado. Se algo não foi preenchido, diga isso com gentileza e sugira o que preencher.
+
+**Uma coisa para lembrar** — 1-2 frases de encorajamento genuíno, específico à situação dessa pessoa (não uma frase motivacional genérica).
+
+Tom: humano, direto, específico aos dados — nunca genérico. Máximo 260 palavras no total.`
         }]})});
       const data=await r.json();
       setIaText(data.content?.[0]?.text||"");
@@ -732,7 +765,7 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
     try{ const pts=calcPontos(d); await dbSalvar(d,pts); }catch(e){};
     try{
       if(!window.PptxGenJS){await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
-      const prs=new window.PptxGenJS();prs.defineLayout({name:"CUSTOM",width:10,height:7.5});prs.layout="CUSTOM";
+      const prs=new window.PptxGenJS();prs.defineLayout({name:"CUSTOM",width:13.333,height:7.5});prs.layout="CUSTOM";
       const N="0F1D3A",NM="1A3160",NL="234080",AM="F5A623",WH="FFFFFF",SL="EEF2FA",SD="C5D0E6";
       const GR="1DB87A",TL="0891B2",PU="7C3AED",OR="EA580C",RE="E05252",PI="EC4899";
       const hoje=d.data?new Date(d.data+"T12:00:00").toLocaleDateString("pt-BR"):new Date().toLocaleDateString("pt-BR");
@@ -741,39 +774,35 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
 
       // ── S1 CAPA ───────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:7.5,fill:{color:N},line:{color:N}});
-      sl.addText("PLANO DE DESENVOLVIMENTO INDIVIDUAL",{x:.55,y:.6,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("PDI",{x:.5,y:.9,w:7,h:2.6,fontSize:110,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:.5,y:4.6,w:9,h:.04,fill:{color:AM},line:{color:AM}});
-      sl.addText(d.nome||"[Nome]",{x:.55,y:4.7,w:8.8,h:.65,fontSize:26,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addText(d.cargo||"",{x:.55,y:5.38,w:8.8,h:.38,fontSize:14,color:SD,fontFace:"Calibri",margin:0});
-      sl.addText(hoje,{x:.55,y:.3,w:8,h:.26,fontSize:9,color:"607090",fontFace:"Calibri",margin:0});
-      // Vontade badge
-      sl.addShape(prs.shapes.OVAL,{x:8.4,y:5.6,w:1.5,h:1.5,fill:{color:AM},line:{color:AM}});
-      sl.addText(`${d.vontade}/10`,{x:8.4,y:5.6,w:1.5,h:1.5,fontSize:16,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addText("vontade",{x:8.3,y:7.1,w:1.7,h:.3,fontSize:8,color:SD,align:"center",fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:7.5,fill:{color:N},line:{color:N}});
+      sl.addText("PLANO DE DESENVOLVIMENTO INDIVIDUAL",{x:.55,y:.6,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("PDI",{x:.5,y:.9,w:9.333,h:2.6,fontSize:110,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:.5,y:4.6,w:12,h:.04,fill:{color:AM},line:{color:AM}});
+      sl.addText(d.nome||"[Nome]",{x:.55,y:4.7,w:11.733,h:.65,fontSize:26,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addText(d.cargo||"",{x:.55,y:5.38,w:11.733,h:.38,fontSize:14,color:SD,fontFace:"Calibri",margin:0});
+      sl.addText(hoje,{x:.55,y:.3,w:10.667,h:.26,fontSize:9,color:"607090",fontFace:"Calibri",margin:0});}
 
       // ── S1.5 COMO APRESENTAR (oculto) ─────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:.83,fill:{color:NM},line:{color:NM}});
-      sl.addText("SÓ PARA VOCÊ · NÃO APRESENTE ESTE SLIDE",{x:.45,y:.1,w:7.8,h:.25,fontSize:8,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText("📌  Como apresentar — e o que ocultar antes",{x:.45,y:.33,w:8.9,h:.43,fontSize:15,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:.87,w:9.25,h:1.49,fill:{color:AM},rectRadius:.1});
-      sl.addShape(prs.shapes.RECTANGLE,{x:5.8,y:1.03,w:.02,h:1.17,fill:{color:"B8861B"}});
-      sl.addText("⚠️  Oculte ESTE slide antes de apresentar (leva 5 segundos):",{x:.65,y:1.0,w:5.1,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:.83,fill:{color:NM},line:{color:NM}});
+      sl.addText("SÓ PARA VOCÊ · NÃO APRESENTE ESTE SLIDE",{x:.45,y:.1,w:10.4,h:.25,fontSize:8,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText("📌  Como apresentar — e o que ocultar antes",{x:.45,y:.33,w:11.867,h:.43,fontSize:15,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:.87,w:12.333,h:1.49,fill:{color:AM},rectRadius:.1});
+      sl.addShape(prs.shapes.RECTANGLE,{x:7.733,y:1.03,w:.02,h:1.17,fill:{color:"B8861B"}});
+      sl.addText("⚠️  Oculte ESTE slide antes de apresentar (leva 5 segundos):",{x:.65,y:1.0,w:6.8,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
       [["1.  ","Na lista de slides (à esquerda), clique com o botão direito neste slide."],
        ["2.  ","Clique em \u201cOcultar Slide\u201d."],
        ["3.  ","O número do slide fica riscado — ele não aparece na hora de apresentar."]
       ].forEach((s,i)=>{
         sl.addText([{text:s[0],options:{bold:true,color:N}},{text:s[1],options:{bold:false,color:"24324F"}}],
-          {x:.67,y:1.38+i*.245,w:5.0,h:.22,fontSize:9,fontFace:"Calibri",margin:0});
+          {x:.67,y:1.38+i*.245,w:6.667,h:.22,fontSize:9,fontFace:"Calibri",margin:0});
       });
-      sl.addText("Para reexibir depois: botão direito → \u201cOcultar Slide\u201d de novo.",{x:.67,y:2.15,w:5.0,h:.21,fontSize:8,italic:true,color:"4A3A12",fontFace:"Calibri",margin:0});
-      sl.addText("📌  São 5 slides pra ocultar:",{x:5.97,y:1.0,w:3.49,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addText("Para reexibir depois: botão direito → \u201cOcultar Slide\u201d de novo.",{x:.67,y:2.15,w:6.667,h:.21,fontSize:8,italic:true,color:"4A3A12",fontFace:"Calibri",margin:0});
+      sl.addText("📌  São 5 slides pra ocultar:",{x:7.96,y:1.0,w:4.653,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
       sl.addText("Repita os passos ao lado para estes 5 slides de uso pessoal: Ponto de Partida, Roda da Vida, Compromisso, a mensagem da IANA e este aqui (Como apresentar). Nenhum vem oculto automaticamente.",
-        {x:5.97,y:1.33,w:3.49,h:.9,fontSize:8,color:"24324F",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.44,w:4.84,h:3.07,fill:{color:NL},rectRadius:.12});
-      sl.addText("📋  Sequência para apresentar",{x:.62,y:2.61,w:4.35,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+        {x:7.96,y:1.33,w:4.653,h:.9,fontSize:8,color:"24324F",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.44,w:6.453,h:3.07,fill:{color:NL},rectRadius:.12});
+      sl.addText("📋  Sequência para apresentar",{x:.62,y:2.61,w:5.8,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [[TL,"Abra com sua intenção  ","por que você está ali e o que quer crescer."],
        [AM,"Conte quem você é  ","conquistas, jornada e o que te move."],
        [PU,"Mostre aonde quer chegar  ","legado e metas de curto, médio e longo prazo."],
@@ -785,122 +814,122 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
         sl.addShape(prs.shapes.OVAL,{x:.61,y,w:.36,h:.36,fill:{color:p[0]},line:{color:p[0]}});
         sl.addText(`${i+1}`,{x:.61,y,w:.36,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
         sl.addText([{text:p[1],options:{bold:true,color:WH}},{text:p[2],options:{bold:false,color:SD}}],
-          {x:1.07,y:y-.03,w:3.94,h:.25,fontSize:9,fontFace:"Calibri",margin:0,valign:"middle"});
+          {x:1.427,y:y-.03,w:5.253,h:.25,fontSize:9,fontFace:"Calibri",margin:0,valign:"middle"});
       });
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.33,y:2.44,w:4.29,h:3.07,fill:{color:NL},rectRadius:.12});
-      sl.addText("💬  Frases que ajudam",{x:5.58,y:2.61,w:3.8,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.107,y:2.44,w:5.72,h:3.07,fill:{color:NL},rectRadius:.12});
+      sl.addText("💬  Frases que ajudam",{x:7.44,y:2.61,w:5.067,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [[TL,"ABERTURA","\u201cObrigada pelo seu tempo. Quero compartilhar meu plano de desenvolvimento e como pretendo evoluir.\u201d"],
        [PU,"TRANSIÇÃO","\u201cAgora que você me conhece um pouco melhor, deixa eu mostrar para onde quero ir.\u201d"],
        [GR,"FECHAMENTO","\u201cMeu pedido é [apoio específico]. Podemos combinar um acompanhamento mensal?\u201d"],
       ].forEach(([cor,label,frase],i)=>{
         const y=3.03+i*.836;
-        sl.addText(label,{x:5.58,y,w:3.8,h:.23,fontSize:8,bold:true,color:cor,fontFace:"Calibri",margin:0});
-        sl.addText(frase,{x:5.58,y:y+.246,w:3.8,h:.53,fontSize:9,italic:true,color:"E9EEFB",fontFace:"Calibri",margin:6,valign:"middle"});
+        sl.addText(label,{x:7.44,y,w:5.067,h:.23,fontSize:8,bold:true,color:cor,fontFace:"Calibri",margin:0});
+        sl.addText(frase,{x:7.44,y:y+.246,w:5.067,h:.53,fontSize:9,italic:true,color:"E9EEFB",fontFace:"Calibri",margin:6,valign:"middle"});
       });}
 
       // ── S2 PONTO DE PARTIDA (oculto) ─────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.15,fill:{color:NM},line:{color:NM}});
-      sl.addText("PONTO DE PARTIDA",{x:.6,y:.08,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Intenção & Como estou chegando hoje",{x:.6,y:.4,w:8,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.25,w:6.0,h:2.2,fill:{color:NL},rectRadius:.1});
-      sl.addText("🎯  MINHA INTENÇÃO",{x:.6,y:1.38,w:5.6,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText(d.intencao||"–",{x:.6,y:1.75,w:5.6,h:1.6,fontSize:14,color:WH,fontFace:"Calibri",italic:true,valign:"top",margin:4});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.6,y:1.25,w:3.0,h:2.2,fill:{color:NL},rectRadius:.1});
-      sl.addText("🌡️  COMO ESTOU",{x:6.75,y:1.38,w:2.7,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.15,fill:{color:NM},line:{color:NM}});
+      sl.addText("PONTO DE PARTIDA",{x:.6,y:.08,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Intenção & Como estou chegando hoje",{x:.6,y:.4,w:10.667,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.25,w:8,h:2.2,fill:{color:NL},rectRadius:.1});
+      sl.addText("🎯  MINHA INTENÇÃO",{x:.6,y:1.38,w:7.467,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText(d.intencao||"–",{x:.6,y:1.75,w:7.467,h:1.6,fontSize:14,color:WH,fontFace:"Calibri",italic:true,valign:"top",margin:4});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.8,y:1.25,w:4,h:2.2,fill:{color:NL},rectRadius:.1});
+      sl.addText("🌡️  COMO ESTOU",{x:9,y:1.38,w:3.6,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [{k:"corpo",l:"💪 Corpo"},{k:"mente",l:"🧠 Mente"},{k:"emocao",l:"❤️ Emoção"}].forEach((dim,i)=>{
         const y=1.78+i*.5;
-        sl.addText(`${dim.l}  ${d.energia[dim.k]}/5`,{x:6.75,y,w:2.7,h:.32,fontSize:11,color:WH,fontFace:"Calibri",margin:0,valign:"middle"});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.75,y:y+.24,w:2.7,h:.1,fill:{color:SD},rectRadius:.03});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.75,y:y+.24,w:Math.max(2.7*(d.energia[dim.k]/5),.05),h:.1,fill:{color:AM},rectRadius:.03});});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.6,w:9.2,h:1.15,fill:{color:AM},rectRadius:.1});
-      sl.addText("🔥  Nível de Vontade",{x:.7,y:3.7,w:7,h:.35,fontSize:13,bold:true,color:N,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.OVAL,{x:8.0,y:3.52,w:1.4,h:1.2,fill:{color:N},line:{color:N}});
-      sl.addText(`${d.vontade}`,{x:8.0,y:3.52,w:1.4,h:1.2,fontSize:36,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addText("🔒  Uso pessoal · para sua autoavaliação (não apresentar)",{x:.4,y:4.95,w:9.2,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
+        sl.addText(`${dim.l}  ${d.energia[dim.k]}/5`,{x:9,y,w:3.6,h:.32,fontSize:11,color:WH,fontFace:"Calibri",margin:0,valign:"middle"});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9,y:y+.24,w:3.6,h:.1,fill:{color:SD},rectRadius:.03});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9,y:y+.24,w:Math.max(3.6*(d.energia[dim.k]/5),0.067),h:.1,fill:{color:AM},rectRadius:.03});});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.6,w:12.267,h:1.15,fill:{color:AM},rectRadius:.1});
+      sl.addText("🔥  Nível de Vontade",{x:.7,y:3.7,w:9.333,h:.35,fontSize:13,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.OVAL,{x:10.667,y:3.52,w:1.867,h:1.2,fill:{color:N},line:{color:N}});
+      sl.addText(`${d.vontade}`,{x:10.667,y:3.52,w:1.867,h:1.2,fontSize:36,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addText("🔒  Uso pessoal · para sua autoavaliação (não apresentar)",{x:.4,y:4.95,w:12.267,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
 
       // ── S3 SOBRE MIM ─────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.5,fill:{color:N},line:{color:N}});
-      sl.addText("SOBRE MIM",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText(d.nome||"[Nome]",{x:.6,y:.42,w:8,h:.85,fontSize:28,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      if(d.sobreMim.frase){sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.62,w:9.2,h:.88,fill:{color:N},rectRadius:.1});sl.addText(`❝  ${d.sobreMim.frase}  ❞`,{x:.4,y:1.62,w:9.2,h:.88,fontSize:13,color:AM,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:12});}
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.5,fill:{color:N},line:{color:N}});
+      sl.addText("SOBRE MIM",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText(d.nome||"[Nome]",{x:.6,y:.42,w:10.667,h:.85,fontSize:28,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      if(d.sobreMim.frase){sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.62,w:12.267,h:.88,fill:{color:N},rectRadius:.1});sl.addText(`❝  ${d.sobreMim.frase}  ❞`,{x:.4,y:1.62,w:12.267,h:.88,fontSize:13,color:AM,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:12});}
       // Foto placeholder
-      sl.addText("📷  Quem eu sou além do trabalho",{x:.4,y:2.65,w:5.2,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.02,w:3.4,h:3.25,fill:{color:"C5D0E6"},rectRadius:.15});
-      sl.addText("📷\nAdicione sua\nfoto principal",{x:.4,y:3.02,w:3.4,h:3.25,fontSize:13,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3.95,y:3.02,w:1.55,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
-      sl.addText("🌟\nUm momento\nmarcante",{x:3.95,y:3.02,w:1.55,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3.95,y:4.72,w:1.55,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
-      sl.addText("❤️\nO que eu amo",{x:3.95,y:4.72,w:1.55,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addText("📷  Quem eu sou além do trabalho",{x:.4,y:2.65,w:6.933,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.02,w:4.533,h:3.25,fill:{color:"C5D0E6"},rectRadius:.15});
+      sl.addText("📷\nAdicione sua\nfoto principal",{x:.4,y:3.02,w:4.533,h:3.25,fontSize:13,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:3.02,w:2.067,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
+      sl.addText("🌟\nUm momento\nmarcante",{x:5.267,y:3.02,w:2.067,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:4.72,w:2.067,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
+      sl.addText("❤️\nO que eu amo",{x:5.267,y:4.72,w:2.067,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
       // Inspirações
-      sl.addText("✨  O que me inspira",{x:5.7,y:2.65,w:3.9,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
+      sl.addText("✨  O que me inspira",{x:7.6,y:2.65,w:5.2,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
       const insp=d.sobreMim.inspiracoes.length>0?d.sobreMim.inspiracoes:["Família","Propósito","Crescimento"];
       const inspCores=[GR,TL,PU,AM,OR,RE,PI,"028090"];
       insp.slice(0,5).forEach((item,i)=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.7,y:3.05+i*.62,w:3.9,h:.54,fill:{color:inspCores[i]||GR},rectRadius:.1});
-        sl.addText(item,{x:5.7,y:3.05+i*.62,w:3.9,h:.54,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});}
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.6,y:3.05+i*.62,w:5.2,h:.54,fill:{color:inspCores[i]||GR},rectRadius:.1});
+        sl.addText(item,{x:7.6,y:3.05+i*.62,w:5.2,h:.54,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});}
 
       // ── S4 CONQUISTAS ─────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:N},line:{color:N}});
-      sl.addText("MINHAS CONQUISTAS",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("O que já construí que me orgulha",{x:.6,y:.42,w:8,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:N},line:{color:N}});
+      sl.addText("MINHAS CONQUISTAS",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("O que já construí que me orgulha",{x:.6,y:.42,w:10.667,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
       const cores3=[GR,TL,PU];
       [{n:1,v:d.conquistas.c1||"[Conquista 1]"},{n:2,v:d.conquistas.c2||"[Conquista 2]"},{n:3,v:d.conquistas.c3||"[Conquista 3]"}].forEach((c,i)=>{
         const y=1.45+i*1.7;const cor=cores3[i];
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y,w:9.2,h:1.52,fill:{color:WH},rectRadius:.12});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y,w:12.267,h:1.52,fill:{color:WH},rectRadius:.12});
         sl.addShape(prs.shapes.OVAL,{x:.58,y:y+.38,w:.76,h:.76,fill:{color:cor},line:{color:cor}});
         sl.addText(`${c.n}`,{x:.58,y:y+.38,w:.76,h:.76,fontSize:20,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(c.v,{x:1.5,y:y+.12,w:7.9,h:1.28,fontSize:14,color:N,fontFace:"Calibri",valign:"middle",margin:6});});}
+        sl.addText(c.v,{x:2,y:y+.12,w:10.533,h:1.28,fontSize:14,color:N,fontFace:"Calibri",valign:"middle",margin:6});});}
 
       // ── S5 JORNADA ────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:N},line:{color:N}});
-      sl.addText("MINHA JORNADA",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Formações & Marcos Profissionais",{x:.6,y:.42,w:8,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:N},line:{color:N}});
+      sl.addText("MINHA JORNADA",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Formações & Marcos Profissionais",{x:.6,y:.42,w:10.667,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
       // Formações
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.4,w:4.55,h:5.55,fill:{color:NM},rectRadius:.12});
-      sl.addText("📚  Formações",{x:.65,y:1.55,w:4.1,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText(d.jornada.formacoes||"[Suas formações]",{x:.65,y:2.02,w:4.1,h:4.75,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:4});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.4,w:6.067,h:5.55,fill:{color:NM},rectRadius:.12});
+      sl.addText("📚  Formações",{x:.65,y:1.55,w:5.467,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText(d.jornada.formacoes||"[Suas formações]",{x:.65,y:2.02,w:5.467,h:4.75,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:4});
       // Marcos
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.15,y:1.4,w:4.45,h:5.55,fill:{color:NM},rectRadius:.12});
-      sl.addText("📍  Marcos Profissionais",{x:5.35,y:1.55,w:4.1,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.867,y:1.4,w:5.933,h:5.55,fill:{color:NM},rectRadius:.12});
+      sl.addText("📍  Marcos Profissionais",{x:7.133,y:1.55,w:5.467,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
       const marcos=d.jornada.marcos.filter(m=>m.ano||m.titulo).slice(0,4);
       marcos.forEach((m,i)=>{
         const y=2.05+i*1.1;
-        sl.addShape(prs.shapes.OVAL,{x:5.35,y:y+.05,w:.72,h:.72,fill:{color:AM},line:{color:AM}});
-        sl.addText(m.ano||"",{x:5.35,y:y+.05,w:.72,h:.72,fontSize:10,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(m.titulo||"",{x:6.2,y:y+.12,w:3.25,h:.52,fontSize:12,color:WH,fontFace:"Calibri",valign:"middle",margin:2});
-        if(i<marcos.length-1)sl.addShape(prs.shapes.RECTANGLE,{x:5.67,y:y+.8,w:.08,h:.35,fill:{color:AM},line:{color:AM}});});}
+        sl.addShape(prs.shapes.OVAL,{x:7.133,y:y+.05,w:.72,h:.72,fill:{color:AM},line:{color:AM}});
+        sl.addText(m.ano||"",{x:7.133,y:y+.05,w:.72,h:.72,fontSize:10,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(m.titulo||"",{x:8.267,y:y+.12,w:4.333,h:.52,fontSize:12,color:WH,fontFace:"Calibri",valign:"middle",margin:2});
+        if(i<marcos.length-1)sl.addShape(prs.shapes.RECTANGLE,{x:7.56,y:y+.8,w:.08,h:.35,fill:{color:AM},line:{color:AM}});});}
 
       // ── S6 OBJETIVOS ──────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:N},line:{color:N}});
-      sl.addText("MEUS OBJETIVOS",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Legado & Onde Quero Chegar",{x:.6,y:.42,w:8,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:9.2,h:1.12,fill:{color:NM},rectRadius:.1});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:N},line:{color:N}});
+      sl.addText("MEUS OBJETIVOS",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Legado & Onde Quero Chegar",{x:.6,y:.42,w:10.667,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:12.267,h:1.12,fill:{color:NM},rectRadius:.1});
       sl.addText("🌟",{x:.55,y:1.55,w:.7,h:.78,fontSize:22,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.objetivos.legado||"[Seu legado]",{x:1.25,y:1.5,w:8.2,h:1.0,fontSize:13,color:WH,fontFace:"Calibri",italic:true,valign:"middle",margin:6});
+      sl.addText(d.objetivos.legado||"[Seu legado]",{x:1.667,y:1.5,w:10.933,h:1.0,fontSize:13,color:WH,fontFace:"Calibri",italic:true,valign:"middle",margin:6});
       const objPrazos=[
         {prazo:"Curto",sub:"2-3 anos",cargo:d.objetivos.cargoShort,txt:d.objetivos.cargoShortText,cor:TL},
         {prazo:"Médio",sub:"3-5 anos",cargo:d.objetivos.cargoMid,txt:d.objetivos.cargoMidText,cor:PU},
         {prazo:"Longo",sub:"5-10 anos",cargo:d.objetivos.cargoLong,txt:d.objetivos.cargoLongText,cor:OR},
       ];
       objPrazos.forEach((o,i)=>{
-        const x=.4+i*3.2;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:3.05,h:4.05,fill:{color:o.cor},rectRadius:.12});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:3.05,h:.55,fill:{color:o.cor},rectRadius:.12});
-        sl.addText(`${o.prazo}`,{x,y:2.68,w:3.05,h:.55,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(o.sub,{x,y:3.25,w:3.05,h:.35,fontSize:10,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
-        sl.addText(o.cargo||"[cargo/objetivo]",{x:x+.12,y:3.65,w:2.82,h:.55,fontSize:15,bold:true,color:WH,align:"center",fontFace:"Calibri",margin:0});
-        sl.addText(o.txt||"[descrição]",{x:x+.12,y:4.3,w:2.82,h:2.3,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});}
+        const x=0.533+i*4.267;
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:4.067,h:4.05,fill:{color:o.cor},rectRadius:.12});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:4.067,h:.55,fill:{color:o.cor},rectRadius:.12});
+        sl.addText(`${o.prazo}`,{x,y:2.68,w:4.067,h:.55,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(o.sub,{x,y:3.25,w:4.067,h:.35,fontSize:10,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
+        sl.addText(o.cargo||"[cargo/objetivo]",{x:x+0.16,y:3.65,w:3.76,h:.55,fontSize:15,bold:true,color:WH,align:"center",fontFace:"Calibri",margin:0});
+        sl.addText(o.txt||"[descrição]",{x:x+0.16,y:4.3,w:3.76,h:2.3,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});}
 
       // ── S7 SWOT + HABILIDADES ─────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.1,fill:{color:N},line:{color:N}});
-      sl.addText("AUTOCONHECIMENTO PROFISSIONAL",{x:.6,y:.08,w:9,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("SWOT & Habilidades do Futuro",{x:.6,y:.38,w:9,h:.55,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.1,fill:{color:N},line:{color:N}});
+      sl.addText("AUTOCONHECIMENTO PROFISSIONAL",{x:.6,y:.08,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("SWOT & Habilidades do Futuro",{x:.6,y:.38,w:12,h:.55,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
       // SWOT 2x2
       const swotItems=[
         {l:"💪 FORÇAS",cor:GR,itens:[...d.swot.forcas,d.swot.forcasOutros].filter(Boolean)},
@@ -909,100 +938,100 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
         {l:"🔴 AMEAÇAS",cor:OR,itens:[...d.swot.ameacas,d.swot.ameacasOutros].filter(Boolean)},
       ];
       swotItems.forEach((q,i)=>{
-        const col=i%2,row=Math.floor(i/2),x=.35+col*2.88,y=1.22+row*2.7;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:2.72,h:2.55,fill:{color:WH},rectRadius:.1});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:2.72,h:.42,fill:{color:q.cor},rectRadius:.1});
-        sl.addText(q.l,{x,y,w:2.72,h:.42,fontSize:8,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(q.itens.slice(0,5).map(v=>`• ${v}`).join("\n")||"–",{x:x+.1,y:y+.48,w:2.52,h:2.0,fontSize:10,color:N,fontFace:"Calibri",valign:"top",margin:2});});
+        const col=i%2,row=Math.floor(i/2),x=0.467+col*3.84,y=1.22+row*2.7;
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:2.55,fill:{color:WH},rectRadius:.1});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:.42,fill:{color:q.cor},rectRadius:.1});
+        sl.addText(q.l,{x,y,w:3.627,h:.42,fontSize:8,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(q.itens.slice(0,5).map(v=>`• ${v}`).join("\n")||"–",{x:x+0.133,y:y+.48,w:3.36,h:2.0,fontSize:10,color:N,fontFace:"Calibri",valign:"top",margin:2});});
       // Habilidades radar (barras à direita)
-      sl.addText("🎯  Habilidades do Futuro",{x:6.0,y:1.22,w:3.6,h:.38,fontSize:12,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addText("🎯  Habilidades do Futuro",{x:8,y:1.22,w:4.8,h:.38,fontSize:12,bold:true,color:N,fontFace:"Calibri",margin:0});
       HABILIDADES.forEach((h,i)=>{
         const y=1.68+i*.55;const nota=d.habilidades[h.id]||0;
         const cor=h.grupo==="Digital"?TL:h.grupo==="Cognitiva"?PU:GR;
-        sl.addText(h.nome,{x:6.0,y,w:2.4,h:.36,fontSize:9,color:N,fontFace:"Calibri",margin:0,valign:"middle"});
-        sl.addText(`${nota}`,{x:8.35,y,w:.4,h:.36,fontSize:10,bold:true,color:cor,align:"right",fontFace:"Calibri",margin:0});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.75,y:y+.1,w:.9,h:.14,fill:{color:SD},rectRadius:.04});
-        if(nota>0)sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.75,y:y+.1,w:Math.max(.9*(nota/5),.04),h:.14,fill:{color:cor},rectRadius:.04});});
+        sl.addText(h.nome,{x:8,y,w:3.2,h:.36,fontSize:9,color:N,fontFace:"Calibri",margin:0,valign:"middle"});
+        sl.addText(`${nota}`,{x:11.133,y,w:.4,h:.36,fontSize:10,bold:true,color:cor,align:"right",fontFace:"Calibri",margin:0});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:11.667,y:y+.1,w:.9,h:.14,fill:{color:SD},rectRadius:.04});
+        if(nota>0)sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:11.667,y:y+.1,w:Math.max(1.2*(nota/5),0.053),h:.14,fill:{color:cor},rectRadius:.04});});
       // Estratégia SWOT
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.35,y:6.64,w:9.3,h:.72,fill:{color:N},rectRadius:.1});
-      sl.addText("🎯  Como vou usar meu SWOT a meu favor",{x:.55,y:6.7,w:8.9,h:.28,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.35,y:6.64,w:12.4,h:.72,fill:{color:N},rectRadius:.1});
+      sl.addText("🎯  Como vou usar meu SWOT a meu favor",{x:.55,y:6.7,w:11.867,h:.28,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
       const forcasArr=d.swot.forcas.slice(0,2);const oopArr=d.swot.oportunidades.slice(0,1);
       const estrategia=forcasArr.length>0&&oopArr.length>0?`Usar ${forcasArr.join(" e ")} para aproveitar ${oopArr[0]}.`:"[Complete com sua estratégia]";
-      sl.addText(estrategia,{x:.55,y:6.98,w:8.9,h:.32,fontSize:10,color:WH,fontFace:"Calibri",margin:0});}
+      sl.addText(estrategia,{x:.55,y:6.98,w:11.867,h:.32,fontSize:10,color:WH,fontFace:"Calibri",margin:0});}
 
       // ── S7.5 RODA DA VIDA (oculto) ────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.15,fill:{color:NM},line:{color:NM}});
-      sl.addText("MINHA RODA DA VIDA",{x:.6,y:.08,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Equilíbrio nas áreas da minha vida",{x:.6,y:.4,w:8,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.15,fill:{color:NM},line:{color:NM}});
+      sl.addText("MINHA RODA DA VIDA",{x:.6,y:.08,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Equilíbrio nas áreas da minha vida",{x:.6,y:.4,w:10.667,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
       const labelsRoda=AREAS_RODA;
       const valoresRoda=AREAS_RODA.map(a=>d.rodaVida[a]?.nota||0);
       sl.addChart(prs.charts.RADAR,[{name:"Nível atual",labels:labelsRoda,values:valoresRoda}],{
-        x:.3,y:1.3,w:5.8,h:4.9,chartColors:[AM],radarStyle:"filled",showLegend:false,showTitle:false,
+        x:.3,y:1.3,w:7.733,h:4.9,chartColors:[AM],radarStyle:"filled",showLegend:false,showTitle:false,
         catAxisLabelColor:WH,catAxisLabelFontSize:9,catAxisLabelFontFace:"Calibri",
         valAxisLabelColor:"7A8AAF",valAxisLabelFontSize:7,valAxisMinVal:0,valAxisMaxVal:10,valAxisMajorUnit:2,
         valGridLine:{color:"2A3F6A",size:1},catGridLine:{color:"2A3F6A",size:1},
         chartArea:{fill:{color:N}},plotArea:{fill:{color:N}},dataLabelColor:WH,showValue:false});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.3,y:1.3,w:3.4,h:4.9,fill:{color:NL},rectRadius:.1});
-      sl.addText("💡  O que fazer com isso",{x:6.6,y:1.48,w:2.85,h:.32,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.4,y:1.3,w:4.533,h:4.9,fill:{color:NL},rectRadius:.1});
+      sl.addText("💡  O que fazer com isso",{x:8.8,y:1.48,w:3.8,h:.32,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
       sl.addText("Quanto menor a nota, mais aquela área pede atenção. Escolha 1 ou 2 áreas para investir agora.",
-        {x:6.6,y:1.86,w:2.85,h:.62,fontSize:8,color:SD,fontFace:"Calibri",margin:0});
+        {x:8.8,y:1.86,w:3.8,h:.62,fontSize:8,color:SD,fontFace:"Calibri",margin:0});
       const baixasRoda=Object.entries(d.rodaVida).sort((a,b)=>(a[1].nota||0)-(b[1].nota||0)).slice(0,3);
       const coresBaixasRoda=[RE,OR,AM];
       baixasRoda.forEach(([area,v],i)=>{
         const y=2.62+i*.85;
-        sl.addShape(prs.shapes.OVAL,{x:6.6,y,w:.32,h:.32,fill:{color:coresBaixasRoda[i]}});
-        sl.addText(`${v.nota||0}`,{x:6.6,y:y-.02,w:.32,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(area,{x:7.02,y,w:2.4,h:.3,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:0});
-        sl.addText(v.melhorar||"Defina uma ação para essa área…",{x:7.02,y:y+.28,w:2.55,h:.5,fontSize:8,italic:!v.melhorar,color:v.melhorar?SD:"6E83B5",fontFace:"Calibri",margin:0});});
-      sl.addText("🔒  Uso pessoal · esta página é só sua — use para se conhecer melhor (não apresentar)",{x:.4,y:6.9,w:9.2,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
+        sl.addShape(prs.shapes.OVAL,{x:8.8,y,w:.32,h:.32,fill:{color:coresBaixasRoda[i]}});
+        sl.addText(`${v.nota||0}`,{x:8.8,y:y-.02,w:.32,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(area,{x:9.36,y,w:3.2,h:.3,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:0});
+        sl.addText(v.melhorar||"Defina uma ação para essa área…",{x:9.36,y:y+.28,w:3.4,h:.5,fontSize:8,italic:!v.melhorar,color:v.melhorar?SD:"6E83B5",fontFace:"Calibri",margin:0});});
+      sl.addText("🔒  Uso pessoal · esta página é só sua — use para se conhecer melhor (não apresentar)",{x:.4,y:6.9,w:12.267,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
 
       // ── S8 SABOTADOR ──────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:N},line:{color:N}});
-      sl.addText("ANTI-AUTOSSABOTAGEM",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Meu Perfil & Plano para Superar Bloqueios",{x:.6,y:.42,w:8,h:.7,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:N},line:{color:N}});
+      sl.addText("ANTI-AUTOSSABOTAGEM",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Meu Perfil & Plano para Superar Bloqueios",{x:.6,y:.42,w:10.667,h:.7,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
       const sabInfo=SABOTADORES_INFO[d.sabotadorPrincipal]||{frase:'""',tracos:""};
       const sabEmoji=QUIZ_SABOTADORES.find(q=>q.sab===d.sabotadorPrincipal)?.emoji||"🛡️";
       const sabEmoji2=QUIZ_SABOTADORES.find(q=>q.sab===d.sabotadorSecundario)?.emoji||"";
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:3.8,h:5.55,fill:{color:NM},rectRadius:.12});
-      sl.addText(sabEmoji,{x:.4,y:1.6,w:3.8,h:.9,fontSize:40,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.sabotadorPrincipal||"[Sabotador]",{x:.5,y:2.52,w:3.6,h:.55,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText("Sabotador Principal",{x:.5,y:3.08,w:3.6,h:.3,fontSize:9,color:SD,align:"center",italic:true,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:1.0,y:3.45,w:2.5,h:.04,fill:{color:AM},line:{color:AM}});
-      sl.addText(sabInfo.frase,{x:.55,y:3.58,w:3.5,h:1.0,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText("Traços secundários",{x:.5,y:4.68,w:3.6,h:.3,fontSize:9,color:AM,bold:true,fontFace:"Calibri",margin:0,align:"center"});
-      sl.addText(`${sabEmoji2} ${d.sabotadorSecundario||"–"}`,{x:.5,y:5.0,w:3.6,h:.3,fontSize:11,color:WH,align:"center",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:5.067,h:5.55,fill:{color:NM},rectRadius:.12});
+      sl.addText(sabEmoji,{x:.4,y:1.6,w:5.067,h:.9,fontSize:40,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(d.sabotadorPrincipal||"[Sabotador]",{x:.5,y:2.52,w:4.8,h:.55,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Sabotador Principal",{x:.5,y:3.08,w:4.8,h:.3,fontSize:9,color:SD,align:"center",italic:true,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:1.333,y:3.45,w:3.333,h:.04,fill:{color:AM},line:{color:AM}});
+      sl.addText(sabInfo.frase,{x:.55,y:3.58,w:4.667,h:1.0,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Traços secundários",{x:.5,y:4.68,w:4.8,h:.3,fontSize:9,color:AM,bold:true,fontFace:"Calibri",margin:0,align:"center"});
+      sl.addText(`${sabEmoji2} ${d.sabotadorSecundario||"–"}`,{x:.5,y:5.0,w:4.8,h:.3,fontSize:11,color:WH,align:"center",fontFace:"Calibri",margin:0});
       [{l:"🎯 Meta",v:d.sabMeta},{l:"🛡️ Como superar",v:d.sabComo},{l:"📅 Quando",v:d.sabQuando},{l:"🤝 Com quem",v:d.sabComQuem}].forEach((it,i)=>{
         const y=1.42+i*1.38;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:4.4,y,w:5.2,h:1.22,fill:{color:WH},rectRadius:.1});
-        sl.addText(it.l,{x:4.58,y:y+.1,w:4.84,h:.3,fontSize:10,bold:true,color:TL,fontFace:"Calibri",margin:0});
-        sl.addText(it.v||"[preencher]",{x:4.58,y:y+.42,w:4.84,h:.72,fontSize:13,color:N,fontFace:"Calibri",margin:0,valign:"top"});});}
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.867,y,w:6.933,h:1.22,fill:{color:WH},rectRadius:.1});
+        sl.addText(it.l,{x:6.107,y:y+.1,w:6.453,h:.3,fontSize:10,bold:true,color:TL,fontFace:"Calibri",margin:0});
+        sl.addText(it.v||"[preencher]",{x:6.107,y:y+.42,w:6.453,h:.72,fontSize:13,color:N,fontFace:"Calibri",margin:0,valign:"top"});});}
 
       // ── S9 COMPROMISSO 7 DIAS ─────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:NM},line:{color:NM}});
-      sl.addText("⚡ COMPROMISSO DE 7 DIAS",{x:.6,y:.1,w:9,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Minha Primeira Ação — Começa Hoje",{x:.6,y:.42,w:9,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:1.2,y:1.45,w:7.6,h:4.3,fill:{color:AM},rectRadius:.18});
-      sl.addText("🤝",{x:1.2,y:1.6,w:7.6,h:.95,fontSize:44,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(`Nos próximos 7 dias, ${pr2.ele||"eu"} vou:`,{x:1.4,y:2.58,w:7.2,h:.5,fontSize:14,color:N,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.compromisso7dias||"[Sua ação de 7 dias]",{x:1.4,y:3.1,w:7.2,h:1.1,fontSize:20,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:8});
-      sl.addShape(prs.shapes.RECTANGLE,{x:2.2,y:4.25,w:5.6,h:.04,fill:{color:N},line:{color:N}});
-      sl.addText(`Esta é minha promessa para mim ${mesmo}.`,{x:1.4,y:4.36,w:7.2,h:.42,fontSize:12,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(`${d.nome||"[Nome]"}  ·  ${hoje}`,{x:1.4,y:4.85,w:7.2,h:.45,fontSize:14,bold:true,color:NM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText("Lembre-se: uma ação pequena hoje vale mais do que um plano perfeito para amanhã. ✨",{x:.5,y:5.95,w:9.0,h:.42,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:NM},line:{color:NM}});
+      sl.addText("⚡ COMPROMISSO DE 7 DIAS",{x:.6,y:.1,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Minha Primeira Ação — Começa Hoje",{x:.6,y:.42,w:12,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:1.6,y:1.45,w:10.133,h:4.3,fill:{color:AM},rectRadius:.18});
+      sl.addText("🤝",{x:1.6,y:1.6,w:10.133,h:.95,fontSize:44,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(`Nos próximos 7 dias, ${pr2.ele||"eu"} vou:`,{x:1.867,y:2.58,w:9.6,h:.5,fontSize:14,color:N,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(d.compromisso7dias||"[Sua ação de 7 dias]",{x:1.867,y:3.1,w:9.6,h:1.1,fontSize:20,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:8});
+      sl.addShape(prs.shapes.RECTANGLE,{x:2.933,y:4.25,w:7.467,h:.04,fill:{color:N},line:{color:N}});
+      sl.addText(`Esta é minha promessa para mim ${mesmo}.`,{x:1.867,y:4.36,w:9.6,h:.42,fontSize:12,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(`${d.nome||"[Nome]"}  ·  ${hoje}`,{x:1.867,y:4.85,w:9.6,h:.45,fontSize:14,bold:true,color:NM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Lembre-se: uma ação pequena hoje vale mais do que um plano perfeito para amanhã. ✨",{x:.5,y:5.95,w:12,h:.42,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S10 5W2H ──────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.1,fill:{color:N},line:{color:N}});
-      sl.addText("PLANO DE AÇÃO",{x:.6,y:.08,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Método 5W2H — Plano para até 4 ações",{x:.6,y:.38,w:8,h:.55,fontSize:18,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.1,fill:{color:N},line:{color:N}});
+      sl.addText("PLANO DE AÇÃO",{x:.6,y:.08,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Método 5W2H — Plano para até 4 ações",{x:.6,y:.38,w:10.667,h:.55,fontSize:18,bold:true,color:WH,fontFace:"Calibri",margin:0});
       // Cabeçalho colunas
-      const colW=2.05;
+      const colW=2.45;
       ["Ação 1","Ação 2","Ação 3","Ação 4"].forEach((ac,i)=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:2.25+i*colW,y:1.15,w:colW-.08,h:.42,fill:{color:NM},rectRadius:.06});
-        sl.addText(ac,{x:2.25+i*colW,y:1.15,w:colW-.08,h:.42,fontSize:11,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fill:{color:NM},rectRadius:.06});
+        sl.addText(ac,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fontSize:11,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
       // Linhas 5W2H
       const rows=[
         {l:"O QUÊ?",sl:"Qual ação?",cor:TL},
@@ -1015,23 +1044,23 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
       ];
       rows.forEach((row,ri)=>{
         const y=1.65+ri*.76;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.25,y,w:1.92,h:.68,fill:{color:row.cor},rectRadius:.08});
-        sl.addText(row.l,{x:.25,y,w:1.92,h:.38,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(row.sl,{x:.25,y:y+.36,w:1.92,h:.3,fontSize:8,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.25,y,w:2.56,h:.68,fill:{color:row.cor},rectRadius:.08});
+        sl.addText(row.l,{x:.25,y,w:2.56,h:.38,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(row.sl,{x:.25,y:y+.36,w:2.56,h:.3,fontSize:8,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
         for(let ci=0;ci<4;ci++){
-          sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:2.25+ci*colW,y,w:colW-.08,h:.68,fill:{color:ri%2===0?NM:NL},rectRadius:.06});
-          sl.addText("✏️",{x:2.35+ci*colW,y:y+.18,w:colW-.28,h:.32,fontSize:13,align:"center",fontFace:"Calibri",margin:0});}});}
+          sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3+ci*colW,y,w:colW-0.107,h:.68,fill:{color:ri%2===0?NM:NL},rectRadius:.06});
+          sl.addText("✏️",{x:3.133+ci*colW,y:y+.18,w:colW-0.373,h:.32,fontSize:13,align:"center",fontFace:"Calibri",margin:0});}});}
 
       // ── S11 CRONOGRAMA ANUAL ──────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.1,fill:{color:N},line:{color:N}});
-      sl.addText("🗓️ CRONOGRAMA ANUAL",{x:.6,y:.08,w:9,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText(`Linha do Tempo das Minhas Ações — ${new Date().getFullYear()}/${new Date().getFullYear()+1}`,{x:.6,y:.38,w:9,h:.55,fontSize:18,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.1,fill:{color:N},line:{color:N}});
+      sl.addText("🗓️ CRONOGRAMA ANUAL",{x:.6,y:.08,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText(`Linha do Tempo das Minhas Ações — ${new Date().getFullYear()}/${new Date().getFullYear()+1}`,{x:.6,y:.38,w:12,h:.55,fontSize:18,bold:true,color:WH,fontFace:"Calibri",margin:0});
       const meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-      const cw=9.2/12;
+      const cw=12.267/12;
       meses.forEach((m,i)=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4+i*cw,y:1.15,w:cw-.04,h:.45,fill:{color:i%2===0?NM:NL},rectRadius:.05});
-        sl.addText(m,{x:.4+i*cw,y:1.15,w:cw-.04,h:.45,fontSize:9,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:0.533+i*cw,y:1.15,w:cw-0.053,h:.45,fill:{color:i%2===0?NM:NL},rectRadius:.05});
+        sl.addText(m,{x:0.533+i*cw,y:1.15,w:cw-0.053,h:.45,fontSize:9,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
       // Ações baseadas no plano
       const acoesPlano=[
         {nome:d.plano30.oq||"Ação 30 dias",inicio:1,dur:1,cor:TL,y:1.75},
@@ -1040,51 +1069,51 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
         {nome:d.compromisso7dias||"Compromisso 7 dias",inicio:0,dur:1,cor:AM,y:3.85},
       ];
       acoesPlano.forEach(a=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4+a.inicio*cw,y:a.y,w:a.dur*cw-.04,h:.58,fill:{color:a.cor},rectRadius:.08});
-        sl.addText(a.nome.substring(0,30),{x:.45+a.inicio*cw,y:a.y+.08,w:a.dur*cw-.14,h:.42,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:2});});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:0.533+a.inicio*cw,y:a.y,w:a.dur*cw-0.053,h:.58,fill:{color:a.cor},rectRadius:.08});
+        sl.addText(a.nome.substring(0,30),{x:.45+a.inicio*cw,y:a.y+.08,w:a.dur*cw-0.187,h:.42,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:2});});
       // Marcos 30/60/90
       [{d:1,l:"30 dias",c:AM},{d:2,l:"60 dias",c:GR},{d:3,l:"90 dias",c:TL}].forEach(m=>{
-        sl.addShape(prs.shapes.RECTANGLE,{x:.4+m.d*cw,y:1.15,w:.06,h:3.5,fill:{color:m.c},line:{color:m.c}});
-        sl.addText(m.l,{x:.4+m.d*cw-.3,y:4.72,w:1.2,h:.3,fontSize:9,bold:true,color:m.c,fontFace:"Calibri",margin:0});});
-      sl.addText("💡 Edite este cronograma no PowerPoint conforme seu ritmo — arraste as barras para ajustar os prazos.",{x:.4,y:5.15,w:9.2,h:.35,fontSize:9,color:"4A5A7A",italic:true,align:"center",fontFace:"Calibri",margin:0});}
+        sl.addShape(prs.shapes.RECTANGLE,{x:0.533+m.d*cw,y:1.15,w:.06,h:3.5,fill:{color:m.c},line:{color:m.c}});
+        sl.addText(m.l,{x:0.533+m.d*cw-0.4,y:4.72,w:1.6,h:.3,fontSize:9,bold:true,color:m.c,fontFace:"Calibri",margin:0});});
+      sl.addText("💡 Edite este cronograma no PowerPoint conforme seu ritmo — arraste as barras para ajustar os prazos.",{x:.4,y:5.15,w:12.267,h:.35,fontSize:9,color:"4A5A7A",italic:true,align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S12 COMPROMISSO (oculto) ──────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.3,fill:{color:NM},line:{color:NM}});
-      sl.addText("MEU COMPROMISSO",{x:.6,y:.1,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("Apresentar meu PDI & Medida de Sucesso",{x:.6,y:.42,w:8,h:.7,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:9.2,h:.88,fill:{color:AM},rectRadius:.1});
-      sl.addText(`📅  Vou apresentar para: ${d.gestor||"[gestor, mentor ou eu mesmo(a)]"}   ·   Data: ${d.gestorData?new Date(d.gestorData+"T12:00:00").toLocaleDateString("pt-BR"):"[DD/MM/AAAA]"}`,{x:.6,y:1.42,w:8.8,h:.88,fontSize:14,bold:true,color:N,fontFace:"Calibri",valign:"middle",margin:10});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:2.42,w:9.2,h:4.1,fill:{color:NL},rectRadius:.12});
-      sl.addText("O que precisa acontecer nos próximos 90 dias para esse PDI valer a pena?",{x:.6,y:2.55,w:8.8,h:.52,fontSize:12,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:NM},line:{color:NM}});
+      sl.addText("MEU COMPROMISSO",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Apresentar meu PDI & Medida de Sucesso",{x:.6,y:.42,w:10.667,h:.7,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.42,w:12.267,h:.88,fill:{color:AM},rectRadius:.1});
+      sl.addText(`📅  Vou apresentar para: ${d.gestor||"[gestor, mentor ou eu mesmo(a)]"}   ·   Data: ${d.gestorData?new Date(d.gestorData+"T12:00:00").toLocaleDateString("pt-BR"):"[DD/MM/AAAA]"}`,{x:.6,y:1.42,w:11.733,h:.88,fontSize:14,bold:true,color:N,fontFace:"Calibri",valign:"middle",margin:10});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:2.42,w:12.267,h:4.1,fill:{color:NL},rectRadius:.12});
+      sl.addText("O que precisa acontecer nos próximos 90 dias para esse PDI valer a pena?",{x:.6,y:2.55,w:11.733,h:.52,fontSize:12,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [{n:1,v:d.medida1||"[Vida pessoal]"},{n:2,v:d.medida2||"[Carreira]"},{n:3,v:d.medida3||"[Desenvolvimento]"}].forEach((m,i)=>{
         const y=3.18+i*.95;
         sl.addShape(prs.shapes.OVAL,{x:.58,y:y+.08,w:.56,h:.56,fill:{color:AM},line:{color:AM}});
         sl.addText(`${m.n}`,{x:.58,y:y+.08,w:.56,h:.56,fontSize:15,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(m.v,{x:1.3,y,w:8.1,h:.7,fontSize:13,color:WH,fontFace:"Calibri",valign:"middle",margin:3});});
-      sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:6.62,w:9.2,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
+        sl.addText(m.v,{x:1.733,y,w:10.8,h:.7,fontSize:13,color:WH,fontFace:"Calibri",valign:"middle",margin:3});});
+      sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:6.62,w:12.267,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
 
       // ── S13 IANA (oculto) ─────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:5.0,h:5.0,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.45,y:.3,w:1.6,h:1.6,fill:{color:NM},rectRadius:.25});
-      sl.addText("🤖",{x:.45,y:.3,w:1.6,h:1.6,fontSize:40,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addText("IANA",{x:2.25,y:.35,w:5,h:.65,fontSize:34,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText("IA da Ana  ·  Sua mentora de desenvolvimento",{x:2.25,y:1.02,w:7.3,h:.35,fontSize:12,color:SD,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:.45,y:1.55,w:9.1,h:.04,fill:{color:AM},line:{color:AM}});
-      sl.addText(iaText||`${d.nome||"[Nome]"}, você construiu um PDI com clareza e coragem que poucas pessoas alcançam. Como ${pr2.ele?"sua":""} mentora, deixo 3 movimentos para transformar esse plano em resultado:\n\n⚖️ Equilíbrio antes de velocidade — Bloqueie no calendário 1 momento de descanso inegociável por semana.\n\n🎯 Uma prioridade de cada vez — Escolha UMA ação para os próximos 30 dias e vá fundo.\n\n📣 Compromisso com testemunha — Apresente seu PDI a alguém de confiança e peça check-in mensal.\n\nCrescimento sustentável pede consistência, não velocidade. ✨`,{x:.5,y:1.68,w:9.0,h:5.0,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:0});
-      sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:7.05,w:9.2,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
+      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:6.667,h:5.0,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.45,y:.3,w:2.133,h:1.6,fill:{color:NM},rectRadius:.25});
+      sl.addText("🤖",{x:.45,y:.3,w:2.133,h:1.6,fontSize:40,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addText("IANA",{x:3,y:.35,w:6.667,h:.65,fontSize:34,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText("IA da Ana  ·  Sua mentora de desenvolvimento",{x:3,y:1.02,w:9.733,h:.35,fontSize:12,color:SD,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:.45,y:1.55,w:12.133,h:.04,fill:{color:AM},line:{color:AM}});
+      sl.addText(iaText||`${d.nome||"[Nome]"}, você construiu um PDI com clareza e coragem que poucas pessoas alcançam. Como ${pr2.ele?"sua":""} mentora, deixo 3 movimentos para transformar esse plano em resultado:\n\n⚖️ Equilíbrio antes de velocidade — Bloqueie no calendário 1 momento de descanso inegociável por semana.\n\n🎯 Uma prioridade de cada vez — Escolha UMA ação para os próximos 30 dias e vá fundo.\n\n📣 Compromisso com testemunha — Apresente seu PDI a alguém de confiança e peça check-in mensal.\n\nCrescimento sustentável pede consistência, não velocidade. ✨`,{x:.5,y:1.68,w:12,h:5.0,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:0});
+      sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:7.05,w:12.267,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
 
       // ── S14 FRASE FINAL ───────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:6.5,h:6.5,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
-      sl.addShape(prs.shapes.OVAL,{x:6.0,y:2.0,w:5.5,h:5.5,fill:{color:NL,transparency:65},line:{color:NL,transparency:65}});
-      sl.addText("\u201C",{x:.8,y:.5,w:8.4,h:1.2,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.fraseF||"Meu desenvolvimento começa com uma decisão:\na de agir.",{x:.8,y:1.65,w:8.4,h:2.2,fontSize:22,color:WH,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:16});
-      sl.addText("\u201D",{x:.8,y:3.65,w:8.4,h:1.0,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:3.1,y:5.0,w:3.8,h:.05,fill:{color:AM},line:{color:AM}});
-      sl.addText(d.nome||"[Nome]",{x:.8,y:5.1,w:8.4,h:.5,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(hoje,{x:.8,y:5.65,w:8.4,h:.3,fontSize:10,color:"607090",align:"center",fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:8.667,h:6.5,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
+      sl.addShape(prs.shapes.OVAL,{x:8,y:2.0,w:7.333,h:5.5,fill:{color:NL,transparency:65},line:{color:NL,transparency:65}});
+      sl.addText("\u201C",{x:.8,y:.5,w:11.2,h:1.2,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(d.fraseF||"Meu desenvolvimento começa com uma decisão:\na de agir.",{x:.8,y:1.65,w:11.2,h:2.2,fontSize:22,color:WH,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:16});
+      sl.addText("\u201D",{x:.8,y:3.65,w:11.2,h:1.0,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:4.133,y:5.0,w:5.067,h:.05,fill:{color:AM},line:{color:AM}});
+      sl.addText(d.nome||"[Nome]",{x:.8,y:5.1,w:11.2,h:.5,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(hoje,{x:.8,y:5.65,w:11.2,h:.3,fontSize:10,color:"607090",align:"center",fontFace:"Calibri",margin:0});}
 
       await prs.writeFile({fileName:`PDI_${(d.nome||"meu").replace(/ /g,"_")}.pptx`});
       setDlMsg("✅ PowerPoint baixado! Abra e personalize como quiser.");
