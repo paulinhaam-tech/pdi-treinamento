@@ -1156,40 +1156,35 @@ function DashboardRH(){
   function entrar(){if(senha===RH_SENHA){setOk(true);carregar();ref.current=setInterval(carregar,30000);}else alert("Senha incorreta");}
   useEffect(()=>()=>clearInterval(ref.current),[]);
 
-  function exportarCSV(){
+  function exportarPDF(){
     if(dados.length===0){alert("Não há dados para exportar ainda.");return;}
-    const colunas=["pontos_total","pontos_completude","pontos_qualidade","pontos_vontade","nivel_vontade",
-      "energia_corpo","energia_mente","energia_emocao","sabotador","cargo_pretendido",
-      "gaps_habilidades","areas_baixas_roda","atualizado_em"];
-    const linhas=[colunas.join(",")];
-    dados.forEach(d=>{
-      const linha=colunas.map(c=>{
-        const v=d[c]??"";
-        const s=String(v).replace(/"/g,'""');
-        return /[,"\n]/.test(s)?`"${s}"`:s;
-      }).join(",");
-      linhas.push(linha);
-    });
-    const csv="\uFEFF"+linhas.join("\n");
-    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    const hoje=new Date().toISOString().slice(0,10);
-    a.href=url;a.download=`relatorio_pdi_${hoje}.csv`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // pausa a atualização automática para o relatório não mudar no meio da impressão
+    clearInterval(ref.current);
+    window.print();
+    ref.current=setInterval(carregar,30000);
   }
 
   async function limparTurma(){
-    if(!confirm(`Isso vai apagar os dados de ${dados.length} participante(s) do ranking e do dashboard, para começar a próxima turma do zero.\n\nJá exportou o CSV desta turma? Essa ação não pode ser desfeita.\n\nConfirma que quer limpar?`))return;
+    if(!confirm(`Isso vai apagar os dados de ${dados.length} participante(s) do ranking e do dashboard, para começar a próxima turma do zero.\n\nJá salvou o PDF desta turma? Essa ação não pode ser desfeita.\n\nConfirma que quer limpar?`))return;
     setLimpando(true);
     try{
+      const antes=dados.length;
       const res=await fetch(`${SUPABASE_URL}/rest/v1/pdi_ranking?id=not.is.null`,{
         method:"DELETE",
-        headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}
+        headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=representation"}
       });
-      if(res.ok){await carregar();alert("Pronto! Dados limpos. Pode começar a próxima turma.");}
-      else alert("Não consegui limpar os dados. Tente novamente ou verifique a conexão.");
+      if(!res.ok){
+        alert("Não consegui limpar os dados. Verifique a conexão e tente novamente.");
+      }else{
+        const apagados=await res.json().catch(()=>[]);
+        const qtd=Array.isArray(apagados)?apagados.length:0;
+        if(qtd===0&&antes>0){
+          alert("O banco recusou a exclusão.\n\nFalta a permissão de DELETE na tabela. Abra o Supabase → SQL Editor e rode:\n\nCREATE POLICY \"Exclusao publica\" ON pdi_ranking FOR DELETE USING (true);\n\nDepois tente de novo por aqui.");
+        }else{
+          await carregar();
+          alert(`Pronto! ${qtd} registro(s) removido(s). Pode começar a próxima turma.`);
+        }
+      }
     }catch(e){alert("Erro ao limpar os dados. Tente novamente.");}
     setLimpando(false);
   }
@@ -1229,17 +1224,30 @@ function DashboardRH(){
   </div>;
 
   return <div style={{fontFamily:"'Inter',sans-serif",minHeight:"100vh",background:C.slate,color:C.text}}>
+    <style>{`
+      .so-print{display:none}
+      @media print{
+        @page{size:A4;margin:12mm}
+        html,body{background:#fff !important}
+        .no-print{display:none !important}
+        .so-print{display:block !important}
+        .pdi-conteudo > div{page-break-inside:avoid;break-inside:avoid}
+        *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+      }
+    `}</style>
     <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:"20px 20px 16px"}}>
       <div style={{fontSize:8,color:C.slateDeep,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Dashboard RH — Dados Anônimos</div>
       <div style={{fontSize:22,fontWeight:800,color:C.white,marginBottom:4}}>Relatório do Treinamento PDI</div>
-      <div style={{fontSize:11,color:C.slateDeep}}>{dados.length} participantes · Atualização a cada 30s</div>
+      <div style={{fontSize:11,color:C.slateDeep}} className="no-print">{dados.length} participantes · Atualização a cada 30s</div>
+      <div style={{fontSize:11,color:C.slateDeep}} className="so-print">{dados.length} participantes · Relatório gerado em {new Date().toLocaleDateString("pt-BR")}</div>
       <div style={{marginTop:10,fontSize:10,color:C.amber,background:`${C.amber}18`,borderRadius:8,padding:"6px 10px",display:"inline-block"}}>🔒 Todos os dados são anônimos (LGPD)</div>
-      <div style={{display:"flex",gap:8,marginTop:14}}>
-        <button onClick={exportarCSV} style={{flex:1,padding:"10px 12px",background:C.amber,color:C.navy,border:"none",borderRadius:10,fontWeight:800,fontSize:12,cursor:"pointer"}}>⬇️ Exportar CSV desta turma</button>
+      <div style={{display:"flex",gap:8,marginTop:14}} className="no-print">
+        <button onClick={exportarPDF} style={{flex:1,padding:"10px 12px",background:C.amber,color:C.navy,border:"none",borderRadius:10,fontWeight:800,fontSize:12,cursor:"pointer"}}>🖨️ Salvar relatório em PDF</button>
         <button onClick={limparTurma} disabled={limpando} style={{flex:1,padding:"10px 12px",background:"transparent",color:C.white,border:`1.5px solid ${C.slateDeep}`,borderRadius:10,fontWeight:700,fontSize:12,cursor:limpando?"default":"pointer"}}>{limpando?"⏳ Limpando...":"🔄 Iniciar próxima turma"}</button>
       </div>
+      <div style={{marginTop:8,fontSize:9,color:C.slateDeep}} className="no-print">Ao salvar em PDF, escolha <strong style={{color:C.white}}>“Salvar como PDF”</strong> no destino e marque <strong style={{color:C.white}}>“Gráficos de plano de fundo”</strong> para manter as cores.</div>
     </div>
-    <div style={{padding:14}}>
+    <div style={{padding:14}} className="pdi-conteudo">
 
       {/* Visão Geral */}
       <div style={{fontWeight:700,fontSize:11,color:C.textMid,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Visão Geral</div>
@@ -1332,7 +1340,9 @@ function DashboardRH(){
       </div>
 
       <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:C.textLight}}>
-        🔒 Relatório anônimo · PDI na Prática<br/>Atualização automática a cada 30s
+        🔒 Relatório anônimo · PDI na Prática<br/>
+        <span className="no-print">Atualização automática a cada 30s</span>
+        <span className="so-print">Gerado em {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
       </div>
     </div>
   </div>;
