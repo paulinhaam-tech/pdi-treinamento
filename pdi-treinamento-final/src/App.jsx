@@ -48,6 +48,7 @@ const ETAPAS = [
   { id:"habilidades",icon:"💡",titulo:"Habilidades" },
   { id:"roda",       icon:"🎡", titulo:"Roda da Vida" },
   { id:"sabotador", icon:"🛡️", titulo:"Sabotador" },
+  { id:"sabresult", icon:"🔍", titulo:"Seu Perfil" },
   { id:"plano",     icon:"📋", titulo:"Plano de Ação" },
   { id:"compromisso",icon:"📅",titulo:"Compromisso" },
   { id:"conclusao", icon:"🎉", titulo:"Conclusão" },
@@ -717,10 +718,10 @@ function TelaConclusao({d,set}){
       {const sl=prs.addSlide();sl.background={color:N};
       sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:7.5,fill:{color:N},line:{color:N}});
       sl.addText("PLANO DE DESENVOLVIMENTO INDIVIDUAL",{x:.55,y:.6,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
-      sl.addText("PDI",{x:.5,y:.9,w:9.333,h:2.6,fontSize:110,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:.5,y:4.6,w:12,h:.04,fill:{color:AM},line:{color:AM}});
-      sl.addText(d.nome||"[Nome]",{x:.55,y:4.7,w:11.733,h:.65,fontSize:26,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addText(d.cargo||"",{x:.55,y:5.38,w:11.733,h:.38,fontSize:14,color:SD,fontFace:"Calibri",margin:0});
+      sl.addText("PDI",{x:.5,y:1.5,w:9.333,h:2.8,fontSize:130,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:.5,y:5.35,w:12.333,h:.04,fill:{color:AM},line:{color:AM}});
+      sl.addText(d.nome||"[Nome]",{x:.55,y:5.5,w:11.733,h:.7,fontSize:28,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addText(d.cargo||"",{x:.55,y:6.25,w:11.733,h:.4,fontSize:15,color:SD,fontFace:"Calibri",margin:0});
       sl.addText(hoje,{x:.55,y:.3,w:10.667,h:.26,fontSize:9,color:"607090",fontFace:"Calibri",margin:0});}
 
       // ── S1.5 COMO APRESENTAR (oculto) ─────────────────────────
@@ -742,8 +743,8 @@ function TelaConclusao({d,set}){
       sl.addText("📌  São 4 slides pra ocultar:",{x:7.96,y:1.0,w:4.653,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
       sl.addText("Repita os passos ao lado para estes 4 slides de uso pessoal: Ponto de Partida, Roda da Vida, Compromisso e este aqui (Como apresentar). Nenhum vem oculto automaticamente.",
         {x:7.96,y:1.33,w:4.653,h:.9,fontSize:8,color:"24324F",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.44,w:6.453,h:3.07,fill:{color:NL},rectRadius:.12});
-      sl.addText("📋  Sequência para apresentar",{x:.62,y:2.61,w:5.8,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.5,w:6.453,h:4.35,fill:{color:NL},rectRadius:.12});
+      sl.addText("📋  Sequência para apresentar",{x:.62,y:2.72,w:5.8,h:.3,fontSize:12,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [[TL,"Abra com sua intenção  ","por que você está ali e o que quer crescer."],
        [AM,"Conte quem você é  ","conquistas, jornada e o que te move."],
        [PU,"Mostre aonde quer chegar  ","legado e metas de curto, médio e longo prazo."],
@@ -751,21 +752,21 @@ function TelaConclusao({d,set}){
        [OR,"Detalhe o plano de ação  ","compromisso de 7 dias, 5W2H e cronograma."],
        ["0EA5E9","Faça um pedido claro  ","o apoio que precisa e o próximo passo."],
       ].forEach((p,i)=>{
-        const y=3.02+i*.427;
-        sl.addShape(prs.shapes.OVAL,{x:.61,y,w:.36,h:.36,fill:{color:p[0]},line:{color:p[0]}});
-        sl.addText(`${i+1}`,{x:.61,y,w:.36,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        const y=3.28+i*.575;
+        sl.addShape(prs.shapes.OVAL,{x:.65,y,w:.4,h:.4,fill:{color:p[0]},line:{color:p[0]}});
+        sl.addText(`${i+1}`,{x:.65,y,w:.4,h:.4,fontSize:11,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
         sl.addText([{text:p[1],options:{bold:true,color:WH}},{text:p[2],options:{bold:false,color:SD}}],
-          {x:1.427,y:y-.03,w:5.253,h:.25,fontSize:9,fontFace:"Calibri",margin:0,valign:"middle"});
+          {x:1.5,y:y-.04,w:5.2,h:.48,fontSize:10,fontFace:"Calibri",margin:0,valign:"middle"});
       });
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.107,y:2.44,w:5.72,h:3.07,fill:{color:NL},rectRadius:.12});
-      sl.addText("💬  Frases que ajudam",{x:7.44,y:2.61,w:5.067,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.107,y:2.5,w:5.72,h:4.35,fill:{color:NL},rectRadius:.12});
+      sl.addText("💬  Frases que ajudam",{x:7.44,y:2.72,w:5.067,h:.3,fontSize:12,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [[TL,"ABERTURA","\u201cObrigada pelo seu tempo. Quero compartilhar meu plano de desenvolvimento e como pretendo evoluir.\u201d"],
        [PU,"TRANSIÇÃO","\u201cAgora que você me conhece um pouco melhor, deixa eu mostrar para onde quero ir.\u201d"],
        [GR,"FECHAMENTO","\u201cMeu pedido é [apoio específico]. Podemos combinar um acompanhamento mensal?\u201d"],
       ].forEach(([cor,label,frase],i)=>{
-        const y=3.03+i*.836;
-        sl.addText(label,{x:7.44,y,w:5.067,h:.23,fontSize:8,bold:true,color:cor,fontFace:"Calibri",margin:0});
-        sl.addText(frase,{x:7.44,y:y+.246,w:5.067,h:.53,fontSize:9,italic:true,color:"E9EEFB",fontFace:"Calibri",margin:6,valign:"middle"});
+        const y=3.3+i*1.16;
+        sl.addText(label,{x:7.44,y,w:5.067,h:.25,fontSize:9,bold:true,color:cor,fontFace:"Calibri",margin:0});
+        sl.addText(frase,{x:7.44,y:y+.3,w:5.067,h:.72,fontSize:10,italic:true,color:"E9EEFB",fontFace:"Calibri",margin:6,valign:"top"});
       });}
 
       // ── S2 PONTO DE PARTIDA (oculto) ─────────────────────────
@@ -773,21 +774,22 @@ function TelaConclusao({d,set}){
       sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.15,fill:{color:NM},line:{color:NM}});
       sl.addText("PONTO DE PARTIDA",{x:.6,y:.08,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
       sl.addText("Intenção & Como estou chegando hoje",{x:.6,y:.4,w:10.667,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.25,w:8,h:2.2,fill:{color:NL},rectRadius:.1});
-      sl.addText("🎯  MINHA INTENÇÃO",{x:.6,y:1.38,w:7.467,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText(d.intencao||"–",{x:.6,y:1.75,w:7.467,h:1.6,fontSize:14,color:WH,fontFace:"Calibri",italic:true,valign:"top",margin:4});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.8,y:1.25,w:4,h:2.2,fill:{color:NL},rectRadius:.1});
-      sl.addText("🌡️  COMO ESTOU",{x:9,y:1.38,w:3.6,h:.3,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.35,w:8,h:3.05,fill:{color:NL},rectRadius:.1});
+      sl.addText("🎯  MINHA INTENÇÃO",{x:.65,y:1.52,w:7.467,h:.3,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText(d.intencao||"–",{x:.65,y:1.95,w:7.467,h:2.3,fontSize:15,color:WH,fontFace:"Calibri",italic:true,valign:"top",margin:4});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:8.8,y:1.35,w:4.133,h:3.05,fill:{color:NL},rectRadius:.1});
+      sl.addText("🌡️  COMO ESTOU",{x:9.05,y:1.52,w:3.6,h:.3,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
       [{k:"corpo",l:"💪 Corpo"},{k:"mente",l:"🧠 Mente"},{k:"emocao",l:"❤️ Emoção"}].forEach((dim,i)=>{
-        const y=1.78+i*.5;
-        sl.addText(`${dim.l}  ${d.energia[dim.k]}/5`,{x:9,y,w:3.6,h:.32,fontSize:11,color:WH,fontFace:"Calibri",margin:0,valign:"middle"});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9,y:y+.24,w:3.6,h:.1,fill:{color:SD},rectRadius:.03});
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9,y:y+.24,w:Math.max(3.6*(d.energia[dim.k]/5),0.067),h:.1,fill:{color:AM},rectRadius:.03});});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.6,w:12.267,h:1.15,fill:{color:AM},rectRadius:.1});
-      sl.addText("🔥  Nível de Vontade",{x:.7,y:3.7,w:9.333,h:.35,fontSize:13,bold:true,color:N,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.OVAL,{x:10.667,y:3.52,w:1.867,h:1.2,fill:{color:N},line:{color:N}});
-      sl.addText(`${d.vontade}`,{x:10.667,y:3.52,w:1.867,h:1.2,fontSize:36,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addText("🔒  Uso pessoal · para sua autoavaliação (não apresentar)",{x:.4,y:4.95,w:12.267,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
+        const y=2.05+i*.72;
+        sl.addText(`${dim.l}  ${d.energia[dim.k]}/5`,{x:9.05,y,w:3.63,h:.32,fontSize:12,color:WH,fontFace:"Calibri",margin:0,valign:"middle"});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9.05,y:y+.36,w:3.63,h:.13,fill:{color:SD},rectRadius:.04});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9.05,y:y+.36,w:Math.max(3.63*(d.energia[dim.k]/5),0.08),h:.13,fill:{color:AM},rectRadius:.04});});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:4.65,w:12.533,h:1.55,fill:{color:AM},rectRadius:.12});
+      sl.addText("🔥  Nível de Vontade",{x:.85,y:4.85,w:9.333,h:.4,fontSize:15,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addText("O quanto estou disposta(o) a me mover pelo meu desenvolvimento agora",{x:.85,y:5.3,w:9.333,h:.35,fontSize:10,color:"6B5310",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.OVAL,{x:11.25,y:4.79,w:1.27,h:1.27,fill:{color:N},line:{color:N}});
+      sl.addText(`${d.vontade}`,{x:11.25,y:4.79,w:1.27,h:1.27,fontSize:38,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addText("🔒  Uso pessoal · para sua autoavaliação (não apresentar)",{x:.4,y:6.55,w:12.533,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
 
       // ── S3 SOBRE MIM ─────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -797,19 +799,19 @@ function TelaConclusao({d,set}){
       if(d.sobreMim.frase){sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.62,w:12.267,h:.88,fill:{color:N},rectRadius:.1});sl.addText(`❝  ${d.sobreMim.frase}  ❞`,{x:.4,y:1.62,w:12.267,h:.88,fontSize:13,color:AM,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:12});}
       // Foto placeholder
       sl.addText("📷  Quem eu sou além do trabalho",{x:.4,y:2.65,w:6.933,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.02,w:4.533,h:3.25,fill:{color:"C5D0E6"},rectRadius:.15});
-      sl.addText("📷\nAdicione sua\nfoto principal",{x:.4,y:3.02,w:4.533,h:3.25,fontSize:13,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:3.02,w:2.067,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
-      sl.addText("🌟\nUm momento\nmarcante",{x:5.267,y:3.02,w:2.067,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:4.72,w:2.067,h:1.55,fill:{color:"D5DFF0"},rectRadius:.1});
-      sl.addText("❤️\nO que eu amo",{x:5.267,y:4.72,w:2.067,h:1.55,fontSize:9,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:3.02,w:4.533,h:3.9,fill:{color:"C5D0E6"},rectRadius:.15});
+      sl.addText("📷\nAdicione sua\nfoto principal",{x:.4,y:3.02,w:4.533,h:3.9,fontSize:13,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:3.02,w:2.067,h:1.87,fill:{color:"D5DFF0"},rectRadius:.1});
+      sl.addText("🌟\nUm momento\nmarcante",{x:5.267,y:3.02,w:2.067,h:1.87,fontSize:10,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.267,y:5.05,w:2.067,h:1.87,fill:{color:"D5DFF0"},rectRadius:.1});
+      sl.addText("❤️\nO que eu amo",{x:5.267,y:5.05,w:2.067,h:1.87,fontSize:10,color:"607090",align:"center",valign:"middle",fontFace:"Calibri",margin:0});
       // Inspirações
       sl.addText("✨  O que me inspira",{x:7.6,y:2.65,w:5.2,h:.32,fontSize:11,bold:true,color:"4A5A7A",fontFace:"Calibri",margin:0});
       const insp=d.sobreMim.inspiracoes.length>0?d.sobreMim.inspiracoes:["Família","Propósito","Crescimento"];
       const inspCores=[GR,TL,PU,AM,OR,RE,PI,"028090"];
       insp.slice(0,5).forEach((item,i)=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.6,y:3.05+i*.62,w:5.2,h:.54,fill:{color:inspCores[i]||GR},rectRadius:.1});
-        sl.addText(item,{x:7.6,y:3.05+i*.62,w:5.2,h:.54,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});}
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:7.6,y:3.05+i*.78,w:5.2,h:.66,fill:{color:inspCores[i]||GR},rectRadius:.12});
+        sl.addText(item,{x:7.6,y:3.05+i*.78,w:5.2,h:.66,fontSize:15,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});}
 
       // ── S4 CONQUISTAS ─────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -818,11 +820,11 @@ function TelaConclusao({d,set}){
       sl.addText("O que já construí que me orgulha",{x:.6,y:.42,w:10.667,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
       const cores3=[GR,TL,PU];
       [{n:1,v:d.conquistas.c1||"[Conquista 1]"},{n:2,v:d.conquistas.c2||"[Conquista 2]"},{n:3,v:d.conquistas.c3||"[Conquista 3]"}].forEach((c,i)=>{
-        const y=1.45+i*1.7;const cor=cores3[i];
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y,w:12.267,h:1.52,fill:{color:WH},rectRadius:.12});
-        sl.addShape(prs.shapes.OVAL,{x:.58,y:y+.38,w:.76,h:.76,fill:{color:cor},line:{color:cor}});
-        sl.addText(`${c.n}`,{x:.58,y:y+.38,w:.76,h:.76,fontSize:20,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(c.v,{x:2,y:y+.12,w:10.533,h:1.28,fontSize:14,color:N,fontFace:"Calibri",valign:"middle",margin:6});});}
+        const y=1.5+i*1.85;const cor=cores3[i];
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y,w:12.533,h:1.68,fill:{color:WH},rectRadius:.14});
+        sl.addShape(prs.shapes.OVAL,{x:.62,y:y+.44,w:.8,h:.8,fill:{color:cor},line:{color:cor}});
+        sl.addText(`${c.n}`,{x:.62,y:y+.44,w:.8,h:.8,fontSize:21,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(c.v,{x:2.05,y:y+.14,w:10.7,h:1.4,fontSize:15,color:N,fontFace:"Calibri",valign:"middle",margin:6});});}
 
       // ── S5 JORNADA ────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -954,14 +956,14 @@ function TelaConclusao({d,set}){
       sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:NM},line:{color:NM}});
       sl.addText("⚡ COMPROMISSO DE 7 DIAS",{x:.6,y:.1,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
       sl.addText("Minha Primeira Ação — Começa Hoje",{x:.6,y:.42,w:12,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:1.6,y:1.45,w:10.133,h:4.3,fill:{color:AM},rectRadius:.18});
-      sl.addText("🤝",{x:1.6,y:1.6,w:10.133,h:.95,fontSize:44,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(`Nos próximos 7 dias, ${pr2.ele||"eu"} vou:`,{x:1.867,y:2.58,w:9.6,h:.5,fontSize:14,color:N,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.compromisso7dias||"[Sua ação de 7 dias]",{x:1.867,y:3.1,w:9.6,h:1.1,fontSize:20,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:8});
-      sl.addShape(prs.shapes.RECTANGLE,{x:2.933,y:4.25,w:7.467,h:.04,fill:{color:N},line:{color:N}});
-      sl.addText(`Esta é minha promessa para mim ${mesmo}.`,{x:1.867,y:4.36,w:9.6,h:.42,fontSize:12,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(`${d.nome||"[Nome]"}  ·  ${hoje}`,{x:1.867,y:4.85,w:9.6,h:.45,fontSize:14,bold:true,color:NM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText("Lembre-se: uma ação pequena hoje vale mais do que um plano perfeito para amanhã. ✨",{x:.5,y:5.95,w:12,h:.42,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:1.6,y:1.5,w:10.133,h:5.0,fill:{color:AM},rectRadius:.2});
+      sl.addText("🤝",{x:1.6,y:1.75,w:10.133,h:1.05,fontSize:50,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(`Nos próximos 7 dias, ${pr2.ele||"eu"} vou:`,{x:1.867,y:2.95,w:9.6,h:.5,fontSize:15,color:N,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(d.compromisso7dias||"[Sua ação de 7 dias]",{x:1.867,y:3.55,w:9.6,h:1.25,fontSize:21,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:8});
+      sl.addShape(prs.shapes.RECTANGLE,{x:2.933,y:4.92,w:7.467,h:.04,fill:{color:N},line:{color:N}});
+      sl.addText(`Esta é minha promessa para mim ${mesmo}.`,{x:1.867,y:5.06,w:9.6,h:.42,fontSize:13,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(`${d.nome||"[Nome]"}  ·  ${hoje}`,{x:1.867,y:5.58,w:9.6,h:.45,fontSize:15,bold:true,color:NM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Lembre-se: uma ação pequena hoje vale mais do que um plano perfeito para amanhã. ✨",{x:.5,y:6.72,w:12.333,h:.42,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S10 5W2H ──────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -1004,19 +1006,19 @@ function TelaConclusao({d,set}){
         sl.addText(m,{x:0.533+i*cw,y:1.15,w:cw-0.053,h:.45,fontSize:9,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
       // Ações baseadas no plano
       const acoesPlano=[
-        {nome:d.plano30.oq||"Ação 30 dias",inicio:1,dur:1,cor:TL,y:1.75},
-        {nome:d.plano60.oq||"Ação 60 dias",inicio:2,dur:2,cor:PU,y:2.45},
-        {nome:d.plano90.oq||"Ação 90 dias",inicio:3,dur:3,cor:GR,y:3.15},
-        {nome:d.compromisso7dias||"Compromisso 7 dias",inicio:0,dur:1,cor:AM,y:3.85},
+        {nome:d.plano30.oq||"Ação 30 dias",inicio:1,dur:1,cor:TL,y:1.95},
+        {nome:d.plano60.oq||"Ação 60 dias",inicio:2,dur:2,cor:PU,y:3.0},
+        {nome:d.plano90.oq||"Ação 90 dias",inicio:3,dur:3,cor:GR,y:4.05},
+        {nome:d.compromisso7dias||"Compromisso 7 dias",inicio:0,dur:1,cor:AM,y:5.1},
       ];
       acoesPlano.forEach(a=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:0.533+a.inicio*cw,y:a.y,w:a.dur*cw-0.053,h:.58,fill:{color:a.cor},rectRadius:.08});
-        sl.addText(a.nome.substring(0,30),{x:.45+a.inicio*cw,y:a.y+.08,w:a.dur*cw-0.187,h:.42,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:2});});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:0.533+a.inicio*cw,y:a.y,w:a.dur*cw-0.053,h:.78,fill:{color:a.cor},rectRadius:.1});
+        sl.addText(a.nome.substring(0,30),{x:.65+a.inicio*cw,y:a.y+.1,w:a.dur*cw-0.29,h:.58,fontSize:11,bold:true,color:WH,fontFace:"Calibri",valign:"middle",margin:2});});
       // Marcos 30/60/90
       [{d:1,l:"30 dias",c:AM},{d:2,l:"60 dias",c:GR},{d:3,l:"90 dias",c:TL}].forEach(m=>{
-        sl.addShape(prs.shapes.RECTANGLE,{x:0.533+m.d*cw,y:1.15,w:.06,h:3.5,fill:{color:m.c},line:{color:m.c}});
-        sl.addText(m.l,{x:0.533+m.d*cw-0.4,y:4.72,w:1.6,h:.3,fontSize:9,bold:true,color:m.c,fontFace:"Calibri",margin:0});});
-      sl.addText("💡 Edite este cronograma no PowerPoint conforme seu ritmo — arraste as barras para ajustar os prazos.",{x:.4,y:5.15,w:12.267,h:.35,fontSize:9,color:"4A5A7A",italic:true,align:"center",fontFace:"Calibri",margin:0});}
+        sl.addShape(prs.shapes.RECTANGLE,{x:0.533+m.d*cw,y:1.15,w:.06,h:4.85,fill:{color:m.c},line:{color:m.c}});
+        sl.addText(m.l,{x:0.533+m.d*cw-0.4,y:6.08,w:1.6,h:.3,fontSize:10,bold:true,color:m.c,fontFace:"Calibri",align:"center",margin:0});});
+      sl.addText("💡 Edite este cronograma no PowerPoint conforme seu ritmo — arraste as barras para ajustar os prazos.",{x:.4,y:6.65,w:12.533,h:.35,fontSize:10,color:"4A5A7A",italic:true,align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S12 COMPROMISSO (oculto) ──────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
@@ -1036,14 +1038,14 @@ function TelaConclusao({d,set}){
 
       // ── S14 FRASE FINAL ───────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
-      sl.addShape(prs.shapes.OVAL,{x:-.8,y:-.8,w:8.667,h:6.5,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
-      sl.addShape(prs.shapes.OVAL,{x:8,y:2.0,w:7.333,h:5.5,fill:{color:NL,transparency:65},line:{color:NL,transparency:65}});
-      sl.addText("\u201C",{x:.8,y:.5,w:11.2,h:1.2,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(d.fraseF||"Meu desenvolvimento começa com uma decisão:\na de agir.",{x:.8,y:1.65,w:11.2,h:2.2,fontSize:22,color:WH,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:16});
-      sl.addText("\u201D",{x:.8,y:3.65,w:11.2,h:1.0,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addShape(prs.shapes.RECTANGLE,{x:4.133,y:5.0,w:5.067,h:.05,fill:{color:AM},line:{color:AM}});
-      sl.addText(d.nome||"[Nome]",{x:.8,y:5.1,w:11.2,h:.5,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(hoje,{x:.8,y:5.65,w:11.2,h:.3,fontSize:10,color:"607090",align:"center",fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.OVAL,{x:-1.6,y:-1.6,w:6.8,h:6.8,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
+      sl.addShape(prs.shapes.OVAL,{x:9.2,y:2.9,w:5.8,h:5.8,fill:{color:NL,transparency:65},line:{color:NL,transparency:65}});
+      sl.addText("\u201C",{x:.8,y:.9,w:11.733,h:1.2,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(d.fraseF||"Meu desenvolvimento começa com uma decisão:\na de agir.",{x:1.6,y:2.15,w:10.133,h:2.4,fontSize:24,color:WH,italic:true,align:"center",valign:"middle",fontFace:"Calibri",margin:16});
+      sl.addText("\u201D",{x:.8,y:4.5,w:11.733,h:1.0,fontSize:80,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.RECTANGLE,{x:4.133,y:5.95,w:5.067,h:.05,fill:{color:AM},line:{color:AM}});
+      sl.addText(d.nome||"[Nome]",{x:.8,y:6.08,w:11.733,h:.5,fontSize:18,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText(hoje,{x:.8,y:6.63,w:11.733,h:.3,fontSize:10,color:"607090",align:"center",fontFace:"Calibri",margin:0});}
 
       await prs.writeFile({fileName:`PDI_${(d.nome||"meu").replace(/ /g,"_")}.pptx`});
       setDlMsg("✅ PowerPoint baixado! Abra e personalize como quiser.");
