@@ -46,6 +46,7 @@ const ETAPAS = [
   { id:"objetivos", icon:"⭐", titulo:"Objetivos" },
   { id:"swot",      icon:"🧩", titulo:"SWOT" },
   { id:"habilidades",icon:"💡",titulo:"Habilidades" },
+  { id:"roda",       icon:"🎡", titulo:"Roda da Vida" },
   { id:"sabotador", icon:"🛡️", titulo:"Sabotador" },
   { id:"plano",     icon:"📋", titulo:"Plano de Ação" },
   { id:"compromisso",icon:"📅",titulo:"Compromisso" },
@@ -113,7 +114,7 @@ const INICIAL = {
   objetivos:{ legado:"", cargoShort:"", cargoShortText:"", cargoMid:"", cargoMidText:"", cargoLong:"", cargoLongText:"" },
   swot:{ forcas:[], forcasOutros:"", fraquezas:[], fraquezasOutros:"", oportunidades:[], oportunidadesOutros:"", ameacas:[], ameacasOutros:"" },
   habilidades:{},
-  rodaVida: AREAS_RODA.reduce((a,r)=>({...a,[r]:5}),{}),
+  rodaVida: AREAS_RODA.reduce((a,r)=>({...a,[r]:{nota:5,melhorar:""}}),{}),
   quizRespostas: {},
   sabotadorPrincipal:"", sabotadorSecundario:"",
   sabMeta:"", sabComo:"", sabQuando:"", sabComQuem:"",
@@ -141,11 +142,6 @@ function Nav({prev,next,nextLabel,disabled}){
   return <div style={{display:"flex",gap:8,marginTop:4}}>
     {prev&&<button onClick={prev} style={{flex:1,padding:12,background:C.white,color:C.navy,border:`1.5px solid ${C.slateDeep}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer"}}>← Voltar</button>}
     {next&&<button onClick={next} disabled={disabled} style={{flex:2,padding:12,background:disabled?C.slateDeep:C.navy,color:disabled?C.textMid:C.white,border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:disabled?"default":"pointer"}}>{nextLabel||"Próximo →"}</button>}
-  </div>;
-}
-function PBar({value,max,cor,h=6}){
-  return <div style={{background:C.slateDeep,borderRadius:99,height:h,overflow:"hidden"}}>
-    <div style={{width:`${Math.min(100,Math.round(value/max*100))}%`,height:"100%",background:cor||C.amber,borderRadius:99,transition:"width .4s"}}/>
   </div>;
 }
 function Chips({opcoes,selecionados,onToggle,cor}){
@@ -227,6 +223,15 @@ function calcPontos(d){
   const v=Math.round(d.vontade*10);
   return{total:c+q+v,completude:c,qualidade:q,vontade:v};
 }
+
+// ── UI HELPERS ────────────────────────────────────────────────────
+function PBar({value,max,cor,h=6}){
+  const p=max>0?Math.min(100,Math.round(value/max*100)):0;
+  return <div style={{background:C.slateDeep,borderRadius:99,height:h,overflow:"hidden"}}>
+    <div style={{width:`${p}%`,height:"100%",background:cor||C.amber,borderRadius:99,transition:"width .4s"}}/>
+  </div>;
+}
+
 
 // ── TELA LGPD ─────────────────────────────────────────────────────
 function TelaLGPD({next}){
@@ -504,6 +509,45 @@ function TelaHabilidades({d,set,next,prev}){
   </div>;
 }
 
+// ── TELA RODA DA VIDA ─────────────────────────────────────────────
+function TelaRoda({d,set,next,prev}){
+  const roda=d.rodaVida;
+  const updNota=(area,nota)=>set({...d,rodaVida:{...roda,[area]:{...roda[area],nota}}});
+  const updMelhorar=(area,melhorar)=>set({...d,rodaVida:{...roda,[area]:{...roda[area],melhorar}}});
+  const baixas=Object.entries(roda).sort((a,b)=>(a[1].nota||0)-(b[1].nota||0)).slice(0,2).map(([area])=>area);
+  return <div>
+    <Card style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,color:C.white}}>
+      <div style={{fontSize:26,marginBottom:4}}>🎡</div>
+      <div style={{fontWeight:800,fontSize:16}}>Roda da Vida</div>
+      <div style={{color:C.slateDeep,fontSize:11,marginTop:4}}>Avalie de 0 a 10 o quanto você está satisfeita(o) com cada área hoje.</div>
+    </Card>
+    <Card>
+      {AREAS_RODA.map(area=>{
+        const nota=roda[area]?.nota??5;
+        return <div key={area} style={{marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <div style={{fontWeight:600,fontSize:13}}>{area}</div>
+            <div style={{fontWeight:800,color:C.amber,fontSize:15,minWidth:24,textAlign:"right"}}>{nota}</div>
+          </div>
+          <input type="range" min={0} max={10} value={nota} onChange={e=>updNota(area,Number(e.target.value))} style={{width:"100%",accentColor:C.amber}}/>
+        </div>;
+      })}
+    </Card>
+    <Card style={{borderLeft:`4px solid ${C.amber}`}}>
+      <Titulo>💡 O que fazer com isso</Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:12,lineHeight:1.6}}>Quanto menor a nota, mais aquela área pede atenção. Escolha uma ação para as áreas mais baixas.</div>
+      {baixas.map(area=>(
+        <div key={area} style={{marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.navy,marginBottom:4}}>{area} — nota {roda[area]?.nota??5}</div>
+          <input value={roda[area]?.melhorar||""} onChange={e=>updMelhorar(area,e.target.value)} placeholder="O que você vai fazer para melhorar essa área?"
+            style={{width:"100%",padding:"9px 11px",border:`1.5px solid ${C.slateDeep}`,borderRadius:9,fontSize:12,outline:"none",background:C.slate,fontFamily:"inherit"}}/>
+        </div>
+      ))}
+    </Card>
+    <Nav prev={prev} next={next}/>
+  </div>;
+}
+
 // ── TELA SABOTADOR (quiz) ─────────────────────────────────────────
 function TelaSabotador({d,set,next,prev}){
   const respostas=d.quizRespostas;
@@ -709,6 +753,51 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
       sl.addText(`${d.vontade}/10`,{x:8.4,y:5.6,w:1.5,h:1.5,fontSize:16,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
       sl.addText("vontade",{x:8.3,y:7.1,w:1.7,h:.3,fontSize:8,color:SD,align:"center",fontFace:"Calibri",margin:0});}
 
+      // ── S1.5 COMO APRESENTAR (oculto) ─────────────────────────
+      {const sl=prs.addSlide();sl.background={color:SL};
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:.83,fill:{color:NM},line:{color:NM}});
+      sl.addText("SÓ PARA VOCÊ · NÃO APRESENTE ESTE SLIDE",{x:.45,y:.1,w:7.8,h:.25,fontSize:8,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText("📌  Como apresentar — e o que ocultar antes",{x:.45,y:.33,w:8.9,h:.43,fontSize:15,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:.87,w:9.25,h:1.49,fill:{color:AM},rectRadius:.1});
+      sl.addShape(prs.shapes.RECTANGLE,{x:5.8,y:1.03,w:.02,h:1.17,fill:{color:"B8861B"}});
+      sl.addText("⚠️  Oculte ESTE slide antes de apresentar (leva 5 segundos):",{x:.65,y:1.0,w:5.1,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
+      [["1.  ","Na lista de slides (à esquerda), clique com o botão direito neste slide."],
+       ["2.  ","Clique em \u201cOcultar Slide\u201d."],
+       ["3.  ","O número do slide fica riscado — ele não aparece na hora de apresentar."]
+      ].forEach((s,i)=>{
+        sl.addText([{text:s[0],options:{bold:true,color:N}},{text:s[1],options:{bold:false,color:"24324F"}}],
+          {x:.67,y:1.38+i*.245,w:5.0,h:.22,fontSize:9,fontFace:"Calibri",margin:0});
+      });
+      sl.addText("Para reexibir depois: botão direito → \u201cOcultar Slide\u201d de novo.",{x:.67,y:2.15,w:5.0,h:.21,fontSize:8,italic:true,color:"4A3A12",fontFace:"Calibri",margin:0});
+      sl.addText("📌  São 5 slides pra ocultar:",{x:5.97,y:1.0,w:3.49,h:.26,fontSize:10,bold:true,color:N,fontFace:"Calibri",margin:0});
+      sl.addText("Repita os passos ao lado para estes 5 slides de uso pessoal: Ponto de Partida, Roda da Vida, Compromisso, a mensagem da IANA e este aqui (Como apresentar). Nenhum vem oculto automaticamente.",
+        {x:5.97,y:1.33,w:3.49,h:.9,fontSize:8,color:"24324F",fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.38,y:2.44,w:4.84,h:3.07,fill:{color:NL},rectRadius:.12});
+      sl.addText("📋  Sequência para apresentar",{x:.62,y:2.61,w:4.35,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      [[TL,"Abra com sua intenção  ","por que você está ali e o que quer crescer."],
+       [AM,"Conte quem você é  ","conquistas, jornada e o que te move."],
+       [PU,"Mostre aonde quer chegar  ","legado e metas de curto, médio e longo prazo."],
+       [GR,"Revele seu autoconhecimento  ","SWOT e habilidades: forças e como agiu."],
+       [OR,"Detalhe o plano de ação  ","compromisso de 7 dias, 5W2H e cronograma."],
+       ["0EA5E9","Faça um pedido claro  ","o apoio que precisa e o próximo passo."],
+      ].forEach((p,i)=>{
+        const y=3.02+i*.427;
+        sl.addShape(prs.shapes.OVAL,{x:.61,y,w:.36,h:.36,fill:{color:p[0]},line:{color:p[0]}});
+        sl.addText(`${i+1}`,{x:.61,y,w:.36,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText([{text:p[1],options:{bold:true,color:WH}},{text:p[2],options:{bold:false,color:SD}}],
+          {x:1.07,y:y-.03,w:3.94,h:.25,fontSize:9,fontFace:"Calibri",margin:0,valign:"middle"});
+      });
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.33,y:2.44,w:4.29,h:3.07,fill:{color:NL},rectRadius:.12});
+      sl.addText("💬  Frases que ajudam",{x:5.58,y:2.61,w:3.8,h:.28,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      [[TL,"ABERTURA","\u201cObrigada pelo seu tempo. Quero compartilhar meu plano de desenvolvimento e como pretendo evoluir.\u201d"],
+       [PU,"TRANSIÇÃO","\u201cAgora que você me conhece um pouco melhor, deixa eu mostrar para onde quero ir.\u201d"],
+       [GR,"FECHAMENTO","\u201cMeu pedido é [apoio específico]. Podemos combinar um acompanhamento mensal?\u201d"],
+      ].forEach(([cor,label,frase],i)=>{
+        const y=3.03+i*.836;
+        sl.addText(label,{x:5.58,y,w:3.8,h:.23,fontSize:8,bold:true,color:cor,fontFace:"Calibri",margin:0});
+        sl.addText(frase,{x:5.58,y:y+.246,w:3.8,h:.53,fontSize:9,italic:true,color:"E9EEFB",fontFace:"Calibri",margin:6,valign:"middle"});
+      });}
+
       // ── S2 PONTO DE PARTIDA (oculto) ─────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
       sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.15,fill:{color:NM},line:{color:NM}});
@@ -840,6 +929,33 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
       const forcasArr=d.swot.forcas.slice(0,2);const oopArr=d.swot.oportunidades.slice(0,1);
       const estrategia=forcasArr.length>0&&oopArr.length>0?`Usar ${forcasArr.join(" e ")} para aproveitar ${oopArr[0]}.`:"[Complete com sua estratégia]";
       sl.addText(estrategia,{x:.55,y:6.98,w:8.9,h:.32,fontSize:10,color:WH,fontFace:"Calibri",margin:0});}
+
+      // ── S7.5 RODA DA VIDA (oculto) ────────────────────────────
+      {const sl=prs.addSlide();sl.background={color:N};
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:10,h:1.15,fill:{color:NM},line:{color:NM}});
+      sl.addText("MINHA RODA DA VIDA",{x:.6,y:.08,w:8,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("Equilíbrio nas áreas da minha vida",{x:.6,y:.4,w:8,h:.6,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      const labelsRoda=AREAS_RODA;
+      const valoresRoda=AREAS_RODA.map(a=>d.rodaVida[a]?.nota||0);
+      sl.addChart(prs.charts.RADAR,[{name:"Nível atual",labels:labelsRoda,values:valoresRoda}],{
+        x:.3,y:1.3,w:5.8,h:4.9,chartColors:[AM],radarStyle:"filled",showLegend:false,showTitle:false,
+        catAxisLabelColor:WH,catAxisLabelFontSize:9,catAxisLabelFontFace:"Calibri",
+        valAxisLabelColor:"7A8AAF",valAxisLabelFontSize:7,valAxisMinVal:0,valAxisMaxVal:10,valAxisMajorUnit:2,
+        valGridLine:{color:"2A3F6A",size:1},catGridLine:{color:"2A3F6A",size:1},
+        chartArea:{fill:{color:N}},plotArea:{fill:{color:N}},dataLabelColor:WH,showValue:false});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.3,y:1.3,w:3.4,h:4.9,fill:{color:NL},rectRadius:.1});
+      sl.addText("💡  O que fazer com isso",{x:6.6,y:1.48,w:2.85,h:.32,fontSize:11,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText("Quanto menor a nota, mais aquela área pede atenção. Escolha 1 ou 2 áreas para investir agora.",
+        {x:6.6,y:1.86,w:2.85,h:.62,fontSize:8,color:SD,fontFace:"Calibri",margin:0});
+      const baixasRoda=Object.entries(d.rodaVida).sort((a,b)=>(a[1].nota||0)-(b[1].nota||0)).slice(0,3);
+      const coresBaixasRoda=[RE,OR,AM];
+      baixasRoda.forEach(([area,v],i)=>{
+        const y=2.62+i*.85;
+        sl.addShape(prs.shapes.OVAL,{x:6.6,y,w:.32,h:.32,fill:{color:coresBaixasRoda[i]}});
+        sl.addText(`${v.nota||0}`,{x:6.6,y:y-.02,w:.32,h:.36,fontSize:10,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
+        sl.addText(area,{x:7.02,y,w:2.4,h:.3,fontSize:10,bold:true,color:WH,fontFace:"Calibri",margin:0});
+        sl.addText(v.melhorar||"Defina uma ação para essa área…",{x:7.02,y:y+.28,w:2.55,h:.5,fontSize:8,italic:!v.melhorar,color:v.melhorar?SD:"6E83B5",fontFace:"Calibri",margin:0});});
+      sl.addText("🔒  Uso pessoal · esta página é só sua — use para se conhecer melhor (não apresentar)",{x:.4,y:6.9,w:9.2,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0});}
 
       // ── S8 SABOTADOR ──────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -1007,7 +1123,7 @@ Escreva 3 parágrafos: 1)reconhecimento do PDI 2)recomendação principal basead
     <Card>
       <Titulo>📥 Baixar seu PDI em PowerPoint</Titulo>
       <div style={{fontSize:11,color:C.textMid,marginBottom:12,lineHeight:1.6}}>
-        14 slides profissionais — inclui slides ocultos para uso pessoal (5W2H, cronograma, compromisso e IANA). Abra no PowerPoint ou Google Slides e edite como quiser!
+        16 slides profissionais — inclui slides ocultos para uso pessoal (5W2H, cronograma, compromisso e IANA). Abra no PowerPoint ou Google Slides e edite como quiser!
       </div>
       <button onClick={baixar} disabled={dlLoad} style={{width:"100%",padding:14,background:dlLoad?C.slateDeep:C.navy,color:dlLoad?C.textMid:C.white,border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:dlLoad?"default":"pointer"}}>
         {dlLoad?"⏳ Gerando seu PowerPoint...":"📊 Baixar PDI (.pptx)"}
@@ -1326,10 +1442,11 @@ export default function App(){
     <TelaObjetivos d={dados} set={setDados} next={()=>ir(6)} prev={()=>setEtapa(4)}/>,
     <TelaSwot d={dados} set={setDados} next={()=>ir(7)} prev={()=>setEtapa(5)}/>,
     <TelaHabilidades d={dados} set={setDados} next={()=>ir(8)} prev={()=>setEtapa(6)}/>,
-    <TelaSabotador d={dados} set={setDados} next={()=>ir(9)} prev={()=>setEtapa(7)}/>,
-    <TelaSabResult d={dados} set={setDados} next={()=>ir(10)} prev={()=>setEtapa(8)}/>,
-    <TelaPlano d={dados} set={setDados} next={()=>ir(11)} prev={()=>setEtapa(9)}/>,
-    <TelaCompromisso d={dados} set={setDados} next={()=>ir(12)} prev={()=>setEtapa(10)}/>,
+    <TelaRoda d={dados} set={setDados} next={()=>ir(9)} prev={()=>setEtapa(7)}/>,
+    <TelaSabotador d={dados} set={setDados} next={()=>ir(10)} prev={()=>setEtapa(8)}/>,
+    <TelaSabResult d={dados} set={setDados} next={()=>ir(11)} prev={()=>setEtapa(9)}/>,
+    <TelaPlano d={dados} set={setDados} next={()=>ir(12)} prev={()=>setEtapa(10)}/>,
+    <TelaCompromisso d={dados} set={setDados} next={()=>ir(13)} prev={()=>setEtapa(11)}/>,
     <TelaConclusao d={dados} set={setDados}/>,
   ];
 
