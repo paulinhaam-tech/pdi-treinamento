@@ -906,16 +906,16 @@ function TelaConclusao({d,set}){
       ];
       objPrazos.forEach((o,i)=>{
         const x=0.533+i*4.267;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:4.067,h:4.05,fill:{color:o.cor},rectRadius:.12});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:4.067,h:3.75,fill:{color:o.cor},rectRadius:.12});
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y:2.68,w:4.067,h:.55,fill:{color:o.cor},rectRadius:.12});
         sl.addText(`${o.prazo}`,{x,y:2.68,w:4.067,h:.55,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
         sl.addText(o.sub,{x,y:3.25,w:4.067,h:.35,fontSize:10,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
         sl.addText(o.cargo||"[cargo/objetivo]",{x:x+0.16,y:3.65,w:3.76,h:.55,fontSize:15,bold:true,color:WH,align:"center",fontFace:"Calibri",margin:0});
-        sl.addText(o.txt||"[descrição]",{x:x+0.16,y:4.3,w:3.76,h:2.3,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});
+        sl.addText(o.txt||"[descrição]",{x:x+0.16,y:4.3,w:3.76,h:2.0,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});
       if(d.objetivos.realidade){
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:6.72,w:12.533,h:.62,fill:{color:"E8EEF7"},rectRadius:.1});
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:6.55,w:12.533,h:.82,fill:{color:"E8EEF7"},rectRadius:.1});
         sl.addText([{text:"🔎  Checagem de realidade:  ",options:{bold:true,color:N}},{text:d.objetivos.realidade,options:{bold:false,color:"24324F"}}],
-          {x:.65,y:6.72,w:12.03,h:.62,fontSize:10,fontFace:"Calibri",valign:"middle",margin:2});
+          {x:.65,y:6.62,w:12.03,h:.7,fontSize:10,fontFace:"Calibri",valign:"middle",margin:2});
       }}
 
       // ── S7 SWOT + HABILIDADES ─────────────────────────────────
@@ -996,10 +996,10 @@ function TelaConclusao({d,set}){
       sl.addText("Traços secundários",{x:.5,y:4.68,w:4.8,h:.3,fontSize:9,color:AM,bold:true,fontFace:"Calibri",margin:0,align:"center"});
       sl.addText(`${sabEmoji2} ${d.sabotadorSecundario||"–"}`,{x:.5,y:5.0,w:4.8,h:.3,fontSize:11,color:WH,align:"center",fontFace:"Calibri",margin:0});
       [{l:"🎯 Meta",v:d.sabMeta},{l:"🛡️ Como superar",v:d.sabComo},{l:"📅 Quando",v:d.sabQuando},{l:"🤝 Com quem",v:d.sabComQuem}].forEach((it,i)=>{
-        const y=1.42+i*1.38;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.867,y,w:6.933,h:1.22,fill:{color:WH},rectRadius:.1});
+        const y=1.42+i*1.45;
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.867,y,w:6.933,h:1.32,fill:{color:WH},rectRadius:.1});
         sl.addText(it.l,{x:6.107,y:y+.1,w:6.453,h:.3,fontSize:10,bold:true,color:TL,fontFace:"Calibri",margin:0});
-        sl.addText(it.v||"[preencher]",{x:6.107,y:y+.42,w:6.453,h:.72,fontSize:13,color:N,fontFace:"Calibri",margin:0,valign:"top"});});}
+        sl.addText(it.v||"[preencher]",{x:6.107,y:y+.42,w:6.453,h:.82,fontSize:12,color:N,fontFace:"Calibri",margin:0,valign:"top"});});}
 
       // ── S9 COMPROMISSO 7 DIAS ─────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
