@@ -28,12 +28,6 @@ const C = {
   gold:"#F5C518", silver:"#C0C0C0", bronze:"#CD7F32",
 };
 
-// ── PRONOMES ──────────────────────────────────────────────────────
-function getPronomes(genero) {
-  if (genero === "Feminino") return { ele: "ela", seu: "sua", dele: "dela", mesmo: "mesma", pron: "ela" };
-  if (genero === "Masculino") return { ele: "ele", seu: "seu", dele: "dele", mesmo: "mesmo", pron: "ele" };
-  return { ele: "", seu: "seu/sua", dele: "de", mesmo: "mesmo(a)", pron: "" };
-}
 
 // ── DADOS ESTÁTICOS ───────────────────────────────────────────────
 const ETAPAS = [
@@ -107,12 +101,12 @@ const MSGS = [
 ];
 
 const INICIAL = {
-  nome:"", cargo:"", genero:"", data:"", vontade:7,
+  nome:"", apelido:"", cargo:"", data:"", vontade:7,
   intencao:"", energia:{corpo:3,mente:3,emocao:3},
   sobreMim:{ frase:"", inspiracoes:[] },
   conquistas:{ c1:"", c2:"", c3:"" },
   jornada:{ formacoes:"", marcos:[{ano:"",titulo:""}] },
-  objetivos:{ legado:"", cargoShort:"", cargoShortText:"", cargoMid:"", cargoMidText:"", cargoLong:"", cargoLongText:"" },
+  objetivos:{ legado:"", cargoShort:"", cargoShortText:"", cargoMid:"", cargoMidText:"", cargoLong:"", cargoLongText:"", realidade:"" },
   swot:{ forcas:[], forcasOutros:"", fraquezas:[], fraquezasOutros:"", oportunidades:[], oportunidadesOutros:"", ameacas:[], ameacasOutros:"" },
   habilidades:{},
   rodaVida: AREAS_RODA.reduce((a,r)=>({...a,[r]:{nota:5,melhorar:""}}),{}),
@@ -161,6 +155,31 @@ function Chips({opcoes,selecionados,onToggle,cor}){
 // ── SUPABASE RANKING ────────────────────────────────────────────
 const RH_SENHA = "pdi2026rh";
 
+// ── ACESSO DOS PARTICIPANTES ──────────────────────────────────────
+// Último dia em que o app fica aberto para as pessoas preencherem (formato AAAA-MM-DD).
+// Depois dessa data o link mostra "treinamento encerrado" sozinho.
+// O ranking (?ranking=1) e o dashboard do RH (?rh=1) continuam funcionando sempre.
+// Deixe "" (vazio) para nunca expirar.
+const ACESSO_ATE = "";
+
+// Quem a pessoa procura para tirar dúvidas ou pedir exclusão dos dados (aviso de privacidade).
+const CONTATO_LGPD = "a área de RH responsável pelo treinamento";
+
+// ── RASCUNHO NO PRÓPRIO APARELHO ──────────────────────────────────
+// Guarda o preenchimento em andamento SOMENTE no navegador da pessoa (sessionStorage).
+// Nada é enviado para servidor. O navegador apaga sozinho ao fechar a aba,
+// e o app também apaga assim que o PowerPoint é baixado.
+const RASCUNHO_KEY = "pdi_rascunho";
+function lerRascunho(){
+  try{const s=sessionStorage.getItem(RASCUNHO_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+function salvarRascunho(etapa,dados){
+  try{sessionStorage.setItem(RASCUNHO_KEY,JSON.stringify({etapa,dados}));}catch(e){}
+}
+function limparRascunho(){
+  try{sessionStorage.removeItem(RASCUNHO_KEY);}catch(e){}
+}
+
 async function dbSalvar(d, pts) {
   if (!SUPABASE_URL.includes("supabase")) return false;
   const gaps = HABILIDADES.filter(h=>(d.habilidades[h.id]||0)<=2).map(h=>h.nome).slice(0,3).join(",");
@@ -172,6 +191,7 @@ async function dbSalvar(d, pts) {
       "Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"resolution=merge-duplicates"},
     body:JSON.stringify({
       id:d._sid,
+      apelido:(d.apelido||"").trim().slice(0,24),
       pontos_total:pts.total, pontos_completude:pts.completude,
       pontos_qualidade:pts.qualidade, pontos_vontade:pts.vontade,
       nivel_vontade:d.vontade, energia_corpo:d.energia.corpo,
@@ -201,7 +221,7 @@ function calcPontos(d){
   add(d.sobreMim.inspiracoes?.length>0,15);
   add(d.conquistas.c1,15);add(d.conquistas.c2,15);add(d.conquistas.c3,15);
   add(d.jornada.formacoes,15);add(d.jornada.marcos?.some(m=>m.titulo),15);
-  add(d.objetivos.cargoShort,10);add(d.objetivos.legado,20);
+  add(d.objetivos.cargoShort,10);add(d.objetivos.legado,20);add(d.objetivos.realidade,15);
   if(d.swot.forcas.length&&d.swot.fraquezas.length&&d.swot.oportunidades.length&&d.swot.ameacas.length)c+=30;
   c+=Math.min(Object.values(d.habilidades).filter(v=>v>0).length*2,20);
   c+=Math.min(Object.values(d.rodaVida).filter(r=>r.melhorar?.length>2).length*3,24);
@@ -212,7 +232,7 @@ function calcPontos(d){
   c=Math.min(c,300);
   [d.intencao,d.sobreMim.frase,
    d.conquistas.c1,d.conquistas.c2,d.conquistas.c3,d.jornada.formacoes,
-   d.objetivos.legado,
+   d.objetivos.legado,d.objetivos.realidade,
    d.swot.forcasOutros,d.swot.fraquezasOutros,d.sabComo,
    d.medida1,d.medida2,d.medida3,
   ].forEach(t=>{if(!t)return;if(t.length>150)q+=18;else if(t.length>80)q+=10;else if(t.length>30)q+=5;});
@@ -235,31 +255,57 @@ function PBar({value,max,cor,h=6}){
 // ── TELA LGPD ─────────────────────────────────────────────────────
 function TelaLGPD({next}){
   const [ok,setOk]=useState(false);
-  return <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:24,fontFamily:"'Inter',sans-serif"}}>
-    <div style={{textAlign:"center",paddingTop:16,marginBottom:22}}>
-      <div style={{fontSize:44,marginBottom:10}}>🔒</div>
-      <div style={{fontWeight:800,fontSize:20,color:C.white,marginBottom:6}}>Privacidade & LGPD</div>
-      <div style={{fontSize:12,color:C.slateDeep}}>Como seus dados são tratados</div>
+  const [verMais,setVerMais]=useState(false);
+  return <div style={{minHeight:"100dvh",background:`linear-gradient(160deg,${C.navy} 0%,${C.navyLight} 100%)`,padding:"20px 20px 24px",fontFamily:"'Inter',sans-serif"}}>
+
+    <div style={{textAlign:"center",marginBottom:16}}>
+      <div style={{width:54,height:54,borderRadius:"50%",background:`${C.amber}1F`,border:`2px solid ${C.amber}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:25}}>🎯</div>
+      <div style={{fontWeight:800,fontSize:24,color:C.white,letterSpacing:-.3,lineHeight:1.1}}>PDI na Prática</div>
+      <div style={{fontSize:9,color:C.amber,fontWeight:700,letterSpacing:1.8,textTransform:"uppercase",marginTop:5,lineHeight:1.35}}>Plano de Desenvolvimento Individual</div>
+      <div style={{fontSize:11,color:C.slateDeep,marginTop:8}}>⏱️ 20 a 30 minutos · no seu ritmo</div>
     </div>
-    <div style={{background:C.navyMid,borderRadius:14,padding:18,marginBottom:14}}>
-      {[["🚫","Seus dados pessoais NÃO são armazenados em servidores"],
-        ["📱","O PowerPoint fica salvo SOMENTE no seu dispositivo"],
-        ["📊","Apenas estatísticas anônimas são coletadas"],
-        ["✋","Você pode encerrar a qualquer momento"],
-      ].map(([ic,t],i)=>(
-        <div key={i} style={{display:"flex",gap:12,marginBottom:10,alignItems:"flex-start"}}>
-          <span style={{fontSize:16,flexShrink:0}}>{ic}</span>
-          <span style={{fontSize:12,color:C.slateDeep,lineHeight:1.5}}>{t}</span>
+
+    <div style={{background:C.navyMid,borderRadius:14,padding:"14px 14px",marginBottom:10,border:`1px solid ${C.navyLight}`}}>
+      <div style={{fontSize:9,color:C.amber,fontWeight:800,letterSpacing:1.3,textTransform:"uppercase",marginBottom:11,textAlign:"center"}}>O que você vai construir aqui</div>
+      {[["🧭","Clareza sobre o seu momento","forças, pontos de atenção e travas"],
+        ["🎯","Aonde você quer chegar","metas de curto, médio e longo prazo"],
+        ["🗓️","Um plano com prazos reais","os primeiros 7 dias, 30, 60 e 90"],
+        ["📊","Uma apresentação pronta","PowerPoint editável pro seu gestor"],
+      ].map(([ic,t,sub],i)=>(
+        <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<3?10:0}}>
+          <span style={{fontSize:17,flexShrink:0,lineHeight:1.15}}>{ic}</span>
+          <div>
+            <div style={{fontSize:12.5,color:C.white,fontWeight:700,lineHeight:1.25}}>{t}</div>
+            <div style={{fontSize:10.5,color:C.slateDeep,lineHeight:1.35,marginTop:1}}>{sub}</div>
+          </div>
         </div>
       ))}
     </div>
-    <div onClick={()=>setOk(!ok)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:ok?`${C.green}22`:C.navyMid,borderRadius:12,cursor:"pointer",border:`2px solid ${ok?C.green:C.navyLight}`,marginBottom:14}}>
-      <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${ok?C.green:C.slateDeep}`,background:ok?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-        {ok&&<span style={{color:C.white,fontSize:13,fontWeight:800}}>✓</span>}
+
+    <div style={{background:C.navyMid,borderRadius:12,padding:"11px 13px",marginBottom:11,borderLeft:`3px solid ${C.green}`}}>
+      <div style={{fontSize:10.5,fontWeight:800,color:C.white,marginBottom:6}}>🔒 Privacidade & LGPD</div>
+      <div style={{fontSize:10.5,color:C.slateDeep,lineHeight:1.55}}>
+        Seu nome e suas respostas ficam somente no seu aparelho · para o servidor vão apenas o apelido que você escolher e estatísticas do grupo · você pode encerrar a qualquer momento.
       </div>
-      <span style={{fontSize:12,color:ok?C.green:C.slateDeep,fontWeight:ok?700:400}}>Li e concordo com os termos de privacidade</span>
+      <div onClick={()=>setVerMais(!verMais)} style={{fontSize:10,color:C.amber,fontWeight:700,marginTop:7,cursor:"pointer"}}>{verMais?"− ocultar detalhes":"+ ver detalhes"}</div>
+      {verMais&&<div style={{fontSize:10,color:C.slateDeep,lineHeight:1.6,marginTop:8,borderTop:`1px solid ${C.navyLight}`,paddingTop:8}}>
+        <strong style={{color:C.white}}>Para que serve:</strong> suas respostas montam o seu PDI em PowerPoint e um painel com números do grupo, usado só para conduzir o treinamento.<br/><br/>
+        <strong style={{color:C.white}}>Fica no seu aparelho:</strong> seu nome e todas as respostas. O PowerPoint é gerado no próprio celular/computador e não é enviado para lugar nenhum. Enquanto você preenche, um rascunho fica guardado no navegador e é apagado ao baixar o arquivo ou ao fechar a aba.<br/><br/>
+        <strong style={{color:C.white}}>Vai para o servidor:</strong> o apelido que você escolher para o ranking e dados do grupo — pontuação, nível de energia e de vontade, sabotador e temas de desenvolvimento. <strong style={{color:C.white}}>Seu nome nunca é enviado.</strong> O apelido é escolhido por você: use algo que só o seu time reconheça, não o nome completo. Se deixar em branco, você aparece apenas como “Participante”.<br/><br/>
+        <strong style={{color:C.white}}>Por quanto tempo:</strong> os números do grupo são apagados ao final do treinamento.<br/><br/>
+        <strong style={{color:C.white}}>Seus direitos:</strong> você pode não preencher qualquer campo, encerrar quando quiser e pedir a exclusão dos dados do grupo falando com {CONTATO_LGPD}.<br/><br/>
+        <strong style={{color:C.white}}>Importante:</strong> não escreva sobrenome, CPF, matrícula, e-mail, telefone ou informações confidenciais em nenhum campo.
+      </div>}
     </div>
-    <button onClick={next} disabled={!ok} style={{width:"100%",padding:14,background:ok?C.amber:C.navyMid,color:ok?C.navy:C.slateDeep,border:"none",borderRadius:12,fontWeight:800,fontSize:14,cursor:ok?"pointer":"default"}}>
+
+    <div onClick={()=>setOk(!ok)} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 14px",background:ok?`${C.green}22`:C.navyMid,borderRadius:12,cursor:"pointer",border:`2px solid ${ok?C.green:C.navyLight}`,marginBottom:11}}>
+      <div style={{width:21,height:21,borderRadius:6,border:`2px solid ${ok?C.green:C.slateDeep}`,background:ok?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+        {ok&&<span style={{color:C.white,fontSize:12,fontWeight:800}}>✓</span>}
+      </div>
+      <span style={{fontSize:11.5,color:ok?C.green:C.slateDeep,fontWeight:ok?700:400,lineHeight:1.35}}>Li e concordo com os termos de privacidade</span>
+    </div>
+
+    <button onClick={next} disabled={!ok} style={{width:"100%",padding:14,background:ok?C.amber:C.navyMid,color:ok?C.navy:C.slateDeep,border:"none",borderRadius:12,fontWeight:800,fontSize:14.5,cursor:ok?"pointer":"default",boxShadow:ok?`0 6px 18px ${C.amber}44`:"none"}}>
       Começar meu PDI →
     </button>
   </div>;
@@ -277,18 +323,15 @@ function TelaInicio({d,set,next,prev}){
 
     <Card>
       <Titulo>👤 Seus dados</Titulo>
-      <Campo label="Nome completo *" value={d.nome} onChange={v=>set({...d,nome:v})} placeholder="Como você se chama?"/>
-      <Campo label="Cargo / Área" value={d.cargo} onChange={v=>set({...d,cargo:v})} placeholder="Ex: Analista Financeiro"/>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.textMid,marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Gênero</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {["Feminino","Masculino","Outro","Prefiro não informar"].map(g=>(
-            <button key={g} onClick={()=>set({...d,genero:g})} style={{padding:"8px 14px",borderRadius:99,border:`2px solid ${d.genero===g?C.amber:C.slateDeep}`,background:d.genero===g?C.navy:C.white,color:d.genero===g?C.amber:C.textMid,fontWeight:d.genero===g?700:400,fontSize:12,cursor:"pointer"}}>
-              {d.genero===g?"✓ ":""}{g}
-            </button>
-          ))}
-        </div>
+      <Campo label="Primeiro nome *" value={d.nome} onChange={v=>set({...d,nome:v})} placeholder="Ex: Ana"/>
+      <div style={{fontSize:10.5,color:C.textMid,marginTop:-6,marginBottom:12,lineHeight:1.5,background:C.slate,borderRadius:8,padding:"8px 10px"}}>
+        💡 Só o primeiro nome, para personalizar o seu PowerPoint. Não preencha sobrenome, CPF, matrícula, e-mail ou qualquer dado confidencial em nenhuma etapa.
       </div>
+      <Campo label="Apelido para o ranking" value={d.apelido} onChange={v=>set({...d,apelido:v})} placeholder="Ex: Aninha, Foguete, Time Custos..."/>
+      <div style={{fontSize:10.5,color:C.textMid,marginTop:-6,marginBottom:12,lineHeight:1.5,background:C.slate,borderRadius:8,padding:"8px 10px"}}>
+        🏆 É assim que você vai aparecer no ranking do telão. Escolha algo que só você e o time reconheçam — evite nome completo. Se deixar em branco, aparece como “Participante”.
+      </div>
+      <Campo label="Cargo / Área" value={d.cargo} onChange={v=>set({...d,cargo:v})} placeholder="Ex: Analista Financeiro"/>
       <Campo label="Data de hoje" value={d.data} onChange={v=>set({...d,data:v})} type="date"/>
     </Card>
 
@@ -357,13 +400,12 @@ function TelaSobre({d,set,next,prev}){
 // ── TELA CONQUISTAS ───────────────────────────────────────────────
 function TelaConquistas({d,set,next,prev}){
   const c=d.conquistas;const upd=obj=>set({...d,conquistas:{...c,...obj}});
-  const genero=d.genero;
   return <div>
     <Card style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,color:C.white}}>
       <div style={{fontSize:26,marginBottom:4}}>🏆</div>
       <div style={{fontWeight:800,fontSize:16}}>Minhas Conquistas</div>
       <div style={{color:C.slateDeep,fontSize:11,marginTop:4,lineHeight:1.5}}>
-        Antes de olhar para o futuro, celebre o que {genero==="Feminino"?"ela construiu":"genero==='Masculino'?'ele construiu':'você construiu'"}! 💛
+        Antes de olhar para o futuro, celebre o que você já construiu! 💛
       </div>
     </Card>
     <Card style={{background:C.slate,borderLeft:`3px solid ${C.amber}`}}>
@@ -442,6 +484,13 @@ function TelaObjetivos({d,set,next,prev}){
         <Campo value={o[`cargo${p.prazo}Text`]} onChange={v=>upd({[`cargo${p.prazo}Text`]:v})} placeholder="Descreva sua meta ou objetivo específico..."/>
       </Card>
     ))}
+    <Card style={{borderLeft:`4px solid ${C.amber}`}}>
+      <Titulo>🔎 Esse caminho é realista?</Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:8,lineHeight:1.6}}>
+        Olhe para os cargos que você escolheu e faça uma checagem honesta: o que você já tem a favor e o que ainda falta para chegar lá?
+      </div>
+      <Campo value={d.objetivos.realidade} onChange={v=>upd({realidade:v})} placeholder="Ex: já tenho experiência em análise e boa relação com a área. Falta desenvolver liderança e entender melhor a estratégia da empresa." multi/>
+    </Card>
     <Nav prev={prev} next={next}/>
   </div>;
 }
@@ -600,7 +649,6 @@ function TelaSabotador({d,set,next,prev}){
 // ── TELA PLANO DE AÇÃO ────────────────────────────────────────────
 function TelaPlano({d,set,next,prev}){
   const p=d;
-  const pr=getPronomes(d.genero);
   return <div>
     <Card style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,color:C.white}}>
       <div style={{fontSize:26,marginBottom:4}}>📋</div>
@@ -612,7 +660,7 @@ function TelaPlano({d,set,next,prev}){
     <Card style={{borderLeft:`4px solid ${C.amber}`,background:`${C.amber}08`}}>
       <Titulo cor={C.amber}>⚡ Compromisso de 7 dias</Titulo>
       <div style={{fontSize:11,color:C.textMid,marginBottom:10,lineHeight:1.6}}>
-        Uma ação pequena e específica que {pr.ele||"você"} vai fazer <strong>essa semana</strong>.
+        Uma ação pequena e específica para fazer <strong>essa semana</strong>.
       </div>
       <Campo value={p.compromisso7dias} onChange={v=>set({...p,compromisso7dias:v})} placeholder="Ex: Pesquisar 3 cursos de IA e assistir a primeira aula" multi/>
     </Card>
@@ -673,7 +721,6 @@ function TelaSabResult({d,set,next,prev}){
 
 // ── TELA COMPROMISSO ──────────────────────────────────────────────
 function TelaCompromisso({d,set,next,prev}){
-  const pr=getPronomes(d.genero);
   return <div>
     <Card style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,color:C.white}}>
       <div style={{fontSize:26,marginBottom:4}}>📅</div>
@@ -681,13 +728,13 @@ function TelaCompromisso({d,set,next,prev}){
     </Card>
     <Card style={{borderLeft:`4px solid ${C.teal}`}}>
       <Titulo cor={C.teal}>📅 Apresentar para</Titulo>
-      <Campo label="Gestor, mentor ou para si mesmo(a)" value={d.gestor} onChange={v=>set({...d,gestor:v})} placeholder="Nome de quem vai receber seu PDI"/>
+      <Campo label="Gestor, mentor ou para si mesmo(a)" value={d.gestor} onChange={v=>set({...d,gestor:v})} placeholder="Ex: Marina (só o primeiro nome)"/>
       <Campo label="Data da apresentação" value={d.gestorData} onChange={v=>set({...d,gestorData:v})} type="date"/>
     </Card>
     <Card style={{borderLeft:`4px solid ${C.amber}`}}>
       <Titulo>🎯 O que precisa acontecer em 90 dias?</Titulo>
       <div style={{background:C.navy,borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:C.amber,fontStyle:"italic",lineHeight:1.6}}>
-        "O que precisa acontecer nos próximos 90 dias para {pr.ele||"você"} dizer que esse PDI valeu a pena?"
+        "O que precisa acontecer nos próximos 90 dias para esse PDI ter valido a pena?"
       </div>
       <Campo label="Na minha vida pessoal" value={d.medida1} onChange={v=>set({...d,medida1:v})} placeholder="Ex: Retomar hábitos de saúde..." multi/>
       <Campo label="Na minha carreira" value={d.medida2} onChange={v=>set({...d,medida2:v})} placeholder="Ex: Conquistar promoção..." multi/>
@@ -711,8 +758,6 @@ function TelaConclusao({d,set}){
       const N="0F1D3A",NM="1A3160",NL="234080",AM="F5A623",WH="FFFFFF",SL="EEF2FA",SD="C5D0E6";
       const GR="1DB87A",TL="0891B2",PU="7C3AED",OR="EA580C",RE="E05252",PI="EC4899";
       const hoje=d.data?new Date(d.data+"T12:00:00").toLocaleDateString("pt-BR"):new Date().toLocaleDateString("pt-BR");
-      const pr2=getPronomes(d.genero);
-      const mesmo=`mesmo${d.genero==="Feminino"?"a":d.genero==="Masculino"?"":"(a)"}`;
 
       // ── S1 CAPA ───────────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
@@ -786,7 +831,7 @@ function TelaConclusao({d,set}){
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:9.05,y:y+.36,w:Math.max(3.63*(d.energia[dim.k]/5),0.08),h:.13,fill:{color:AM},rectRadius:.04});});
       sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:4.65,w:12.533,h:1.55,fill:{color:AM},rectRadius:.12});
       sl.addText("🔥  Nível de Vontade",{x:.85,y:4.85,w:9.333,h:.4,fontSize:15,bold:true,color:N,fontFace:"Calibri",margin:0});
-      sl.addText("O quanto estou disposta(o) a me mover pelo meu desenvolvimento agora",{x:.85,y:5.3,w:9.333,h:.35,fontSize:10,color:"6B5310",fontFace:"Calibri",margin:0});
+      sl.addText("O quanto quero me mover pelo meu desenvolvimento agora",{x:.85,y:5.3,w:9.333,h:.35,fontSize:10,color:"6B5310",fontFace:"Calibri",margin:0});
       sl.addShape(prs.shapes.OVAL,{x:11.25,y:4.79,w:1.27,h:1.27,fill:{color:N},line:{color:N}});
       sl.addText(`${d.vontade}`,{x:11.25,y:4.79,w:1.27,h:1.27,fontSize:38,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
       sl.addText("🔒  Uso pessoal · para sua autoavaliação (não apresentar)",{x:.4,y:6.55,w:12.533,h:.35,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
@@ -866,7 +911,12 @@ function TelaConclusao({d,set}){
         sl.addText(`${o.prazo}`,{x,y:2.68,w:4.067,h:.55,fontSize:14,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
         sl.addText(o.sub,{x,y:3.25,w:4.067,h:.35,fontSize:10,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
         sl.addText(o.cargo||"[cargo/objetivo]",{x:x+0.16,y:3.65,w:3.76,h:.55,fontSize:15,bold:true,color:WH,align:"center",fontFace:"Calibri",margin:0});
-        sl.addText(o.txt||"[descrição]",{x:x+0.16,y:4.3,w:3.76,h:2.3,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});}
+        sl.addText(o.txt||"[descrição]",{x:x+0.16,y:4.3,w:3.76,h:2.3,fontSize:12,color:WH,align:"center",valign:"top",fontFace:"Calibri",italic:true,margin:6});});
+      if(d.objetivos.realidade){
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:6.72,w:12.533,h:.62,fill:{color:"E8EEF7"},rectRadius:.1});
+        sl.addText([{text:"🔎  Checagem de realidade:  ",options:{bold:true,color:N}},{text:d.objetivos.realidade,options:{bold:false,color:"24324F"}}],
+          {x:.65,y:6.72,w:12.03,h:.62,fontSize:10,fontFace:"Calibri",valign:"middle",margin:2});
+      }}
 
       // ── S7 SWOT + HABILIDADES ─────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -958,10 +1008,10 @@ function TelaConclusao({d,set}){
       sl.addText("Minha Primeira Ação — Começa Hoje",{x:.6,y:.42,w:12,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
       sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:1.6,y:1.5,w:10.133,h:5.0,fill:{color:AM},rectRadius:.2});
       sl.addText("🤝",{x:1.6,y:1.75,w:10.133,h:1.05,fontSize:50,align:"center",fontFace:"Calibri",margin:0});
-      sl.addText(`Nos próximos 7 dias, ${pr2.ele||"eu"} vou:`,{x:1.867,y:2.95,w:9.6,h:.5,fontSize:15,color:N,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Nos próximos 7 dias, eu vou:",{x:1.867,y:2.95,w:9.6,h:.5,fontSize:15,color:N,align:"center",fontFace:"Calibri",margin:0});
       sl.addText(d.compromisso7dias||"[Sua ação de 7 dias]",{x:1.867,y:3.55,w:9.6,h:1.25,fontSize:21,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:8});
       sl.addShape(prs.shapes.RECTANGLE,{x:2.933,y:4.92,w:7.467,h:.04,fill:{color:N},line:{color:N}});
-      sl.addText(`Esta é minha promessa para mim ${mesmo}.`,{x:1.867,y:5.06,w:9.6,h:.42,fontSize:13,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
+      sl.addText("Esta é a minha promessa.",{x:1.867,y:5.06,w:9.6,h:.42,fontSize:13,color:NM,italic:true,align:"center",fontFace:"Calibri",margin:0});
       sl.addText(`${d.nome||"[Nome]"}  ·  ${hoje}`,{x:1.867,y:5.58,w:9.6,h:.45,fontSize:15,bold:true,color:NM,align:"center",fontFace:"Calibri",margin:0});
       sl.addText("Lembre-se: uma ação pequena hoje vale mais do que um plano perfeito para amanhã. ✨",{x:.5,y:6.72,w:12.333,h:.42,fontSize:11,color:SD,italic:true,align:"center",fontFace:"Calibri",margin:0});}
 
@@ -1049,6 +1099,7 @@ function TelaConclusao({d,set}){
 
       await prs.writeFile({fileName:`PDI_${(d.nome||"meu").replace(/ /g,"_")}.pptx`});
       setDlMsg("✅ PowerPoint baixado! Abra e personalize como quiser.");
+      limparRascunho(); // termina aqui: apaga o rascunho deste aparelho
     }catch(e){setDlMsg("❌ Erro ao gerar. Tente novamente.");console.error(e);}
     setDlLoad(false);
   }
@@ -1076,19 +1127,12 @@ function TelaConclusao({d,set}){
       </button>
       {dlMsg&&<div style={{marginTop:10,padding:10,background:dlMsg.startsWith("✅")?`${C.green}18`:`${C.red}18`,borderRadius:9,fontSize:12,fontWeight:700,color:dlMsg.startsWith("✅")?C.green:C.red,textAlign:"center"}}>{dlMsg}</div>}
     </Card>
-
-    <Card style={{background:C.slate,borderLeft:`4px solid ${C.teal}`,textAlign:"center"}}>
-      <div style={{fontSize:13,color:C.textMid,lineHeight:1.8}}>
-        Gostou do PDI na Prática?<br/>
-        <strong style={{color:C.navy}}>Compartilhe com quem você quer ver crescer! 🚀</strong>
-      </div>
-    </Card>
   </div>;
 }
 
 // ── MENSAGEM MOTIVACIONAL ─────────────────────────────────────────
 function MsgMotivacional({etapa,onContinuar}){
-  return <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif",textAlign:"center"}}>
+  return <div style={{minHeight:"100dvh",background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif",textAlign:"center"}}>
     <div style={{fontSize:56,marginBottom:20}}>🌟</div>
     <div style={{fontSize:18,fontWeight:700,color:C.white,lineHeight:1.5,maxWidth:300,marginBottom:32}}>{MSGS[etapa%MSGS.length]}</div>
     <button onClick={onContinuar} style={{padding:"14px 40px",background:C.amber,color:C.navy,border:"none",borderRadius:12,fontWeight:800,fontSize:15,cursor:"pointer"}}>Continuar →</button>
@@ -1105,7 +1149,7 @@ function TelaRanking(){
   useEffect(()=>{atualizar();ref.current=setInterval(atualizar,10000);return()=>clearInterval(ref.current);},[]);
   const medalhas=[{emoji:"🥇",cor:C.gold},{emoji:"🥈",cor:C.silver},{emoji:"🥉",cor:C.bronze}];
   const top3=ranking.slice(0,3);const resto=ranking.slice(3);
-  return <div style={{minHeight:"100vh",background:C.navy,padding:32,fontFamily:"'Inter',sans-serif"}}>
+  return <div style={{minHeight:"100dvh",background:C.navy,padding:32,fontFamily:"'Inter',sans-serif"}}>
     <style>{`@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}`}</style>
     <div style={{textAlign:"center",marginBottom:32}}>
       <div style={{fontSize:13,color:C.amber,fontWeight:700,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>🏆 Ranking ao Vivo · PDI na Prática</div>
@@ -1121,7 +1165,7 @@ function TelaRanking(){
           const pos=vi===1?0:vi===0?1:2;const m=medalhas[pos];
           return <div key={vi} style={{background:`linear-gradient(160deg,${C.navyMid},${C.navyLight})`,borderRadius:20,padding:"24px 20px",textAlign:"center",border:`3px solid ${m.cor}`,boxShadow:`0 0 30px ${m.cor}44`,minHeight:vi===1?"230px":"190px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",animation:vi===1?"pulse 2s infinite":"none"}}>
             <div style={{fontSize:vi===1?56:42,marginBottom:4}}>{m.emoji}</div>
-            <div style={{fontSize:vi===1?22:18,fontWeight:800,color:C.white,marginBottom:8}}>Participante {pos+1}</div>
+            <div style={{fontSize:vi===1?22:18,fontWeight:800,color:C.white,marginBottom:8}}>{p.apelido||`Participante ${pos+1}`}</div>
             <div style={{fontSize:vi===1?42:32,fontWeight:800,color:m.cor,lineHeight:1}}>{p.pontos_total}</div>
             <div style={{fontSize:10,color:C.slateDeep,marginBottom:8}}>pontos</div>
             <span style={{fontSize:9,background:`${m.cor}22`,color:m.cor,padding:"2px 8px",borderRadius:99,fontWeight:700}}>🔥 {p.nivel_vontade}/10</span>
@@ -1132,7 +1176,7 @@ function TelaRanking(){
         {resto.map((p,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,background:i%2===0?C.navy:C.navyLight,marginBottom:6}}>
             <div style={{fontSize:16,fontWeight:800,color:C.slateDeep,width:30}}>{i+4}º</div>
-            <div style={{flex:1}}><div style={{fontWeight:700,color:C.white,fontSize:14}}>Participante {i+4}</div></div>
+            <div style={{flex:1}}><div style={{fontWeight:700,color:C.white,fontSize:14}}>{p.apelido||`Participante ${i+4}`}</div></div>
             <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:800,color:C.amber}}>{p.pontos_total}</div><div style={{fontSize:9,color:C.slateDeep}}>pts</div></div>
           </div>
         ))}
@@ -1189,7 +1233,7 @@ function DashboardRH(){
     setLimpando(false);
   }
 
-  if(!ok)return <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Inter',sans-serif"}}>
+  if(!ok)return <div style={{minHeight:"100dvh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Inter',sans-serif"}}>
     <div style={{background:C.navyMid,borderRadius:16,padding:32,width:320,textAlign:"center"}}>
       <div style={{fontSize:36,marginBottom:12}}>📊</div>
       <div style={{fontWeight:800,fontSize:18,color:C.white,marginBottom:8}}>Dashboard RH</div>
@@ -1200,7 +1244,7 @@ function DashboardRH(){
     </div>
   </div>;
 
-  if(loading&&dados.length===0)return <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",color:C.slateDeep,fontSize:18,fontFamily:"'Inter',sans-serif"}}>Carregando dados...</div>;
+  if(loading&&dados.length===0)return <div style={{minHeight:"100dvh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",color:C.slateDeep,fontSize:18,fontFamily:"'Inter',sans-serif"}}>Carregando dados...</div>;
 
   const n=Math.max(dados.length,1);
   const media=arr=>arr.length?( arr.reduce((s,x)=>s+x,0)/arr.length).toFixed(1):"–";
@@ -1223,7 +1267,7 @@ function DashboardRH(){
     <div style={{width:`${Math.min(100,(v/max)*100)}%`,height:"100%",background:cor,borderRadius:99}}/>
   </div>;
 
-  return <div style={{fontFamily:"'Inter',sans-serif",minHeight:"100vh",background:C.slate,color:C.text}}>
+  return <div style={{fontFamily:"'Inter',sans-serif",minHeight:"100dvh",background:C.slate,color:C.text}}>
     <style>{`
       .so-print{display:none}
       @media print{
@@ -1350,7 +1394,7 @@ function DashboardRH(){
 
 
 function TelaRevisao(){
-  return <div style={{minHeight:"100vh",background:C.navy,padding:24,fontFamily:"'Inter',sans-serif"}}>
+  return <div style={{minHeight:"100dvh",background:C.navy,padding:24,fontFamily:"'Inter',sans-serif"}}>
     <div style={{textAlign:"center",marginBottom:24,paddingTop:20}}>
       <div style={{fontSize:48,marginBottom:8}}>🔄</div>
       <div style={{fontSize:22,fontWeight:800,color:C.white,marginBottom:8}}>Revisão do PDI</div>
@@ -1375,19 +1419,52 @@ function TelaRevisao(){
 // ── APP PRINCIPAL ─────────────────────────────────────────────────
 
 // ── APP PRINCIPAL ────────────────────────────────────────────────
+function TelaEncerrado(){
+  return <div style={{minHeight:"100dvh",background:`linear-gradient(160deg,${C.navy} 0%,${C.navyLight} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif"}}>
+    <div style={{textAlign:"center",maxWidth:340}}>
+      <div style={{width:60,height:60,borderRadius:"50%",background:`${C.amber}1F`,border:`2px solid ${C.amber}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:28}}>🔒</div>
+      <div style={{fontWeight:800,fontSize:22,color:C.white,marginBottom:10}}>Treinamento encerrado</div>
+      <div style={{fontSize:13,color:C.slateDeep,lineHeight:1.65,marginBottom:18}}>
+        O preenchimento do PDI ficou disponível apenas durante o treinamento e já foi encerrado.
+      </div>
+      <div style={{fontSize:12,color:C.slateDeep,lineHeight:1.6,background:C.navyMid,borderRadius:12,padding:"12px 14px"}}>
+        Se você baixou seu PowerPoint, ele continua salvo no seu dispositivo. 💛
+      </div>
+      <div style={{fontSize:11,color:C.amber,fontWeight:700,letterSpacing:1.6,textTransform:"uppercase",marginTop:20}}>PDI na Prática</div>
+    </div>
+  </div>;
+}
+
 export default function App(){
   const qs=typeof window!=="undefined"?window.location.search:"";
   if(qs.includes("ranking=1"))return <TelaRanking/>;
   if(qs.includes("rh=1"))return <DashboardRH/>;
   if(qs.includes("revisao=1"))return <TelaRevisao/>;
+  if(ACESSO_ATE && new Date() > new Date(`${ACESSO_ATE}T23:59:59`)) return <TelaEncerrado/>;
 
-  const[etapa,setEtapa]=useState(0);
-  const[dados,setDados]=useState(()=>({...INICIAL,
-    _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    _inicio:Date.now(),
-  }));
+  const[etapa,setEtapa]=useState(()=>{const r=lerRascunho();return typeof r?.etapa==="number"?r.etapa:0;});
+  const[dados,setDados]=useState(()=>{
+    const r=lerRascunho();
+    if(r?.dados&&r.dados._sid)return r.dados;
+    return {...INICIAL,
+      _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      _inicio:Date.now(),
+    };
+  });
   const[showMsg,setShowMsg]=useState(false);
   const[proxEtapa,setProxEtapa]=useState(0);
+
+  // Guarda o rascunho no próprio aparelho, para não perder em recarregamento acidental
+  useEffect(()=>{ if(etapa>0) salvarRascunho(etapa,dados); },[etapa,dados]);
+
+  // Avisa antes de recarregar/fechar, para não perder o preenchimento sem querer
+  useEffect(()=>{
+    const comecou = etapa>0 && etapa<13;
+    if(!comecou) return;
+    const aviso=e=>{e.preventDefault();e.returnValue="";};
+    window.addEventListener("beforeunload",aviso);
+    return ()=>window.removeEventListener("beforeunload",aviso);
+  },[etapa]);
 
   function ir(p){
     try{ dbSalvar(dados,calcPontos(dados)); }catch(e){}
@@ -1418,8 +1495,8 @@ export default function App(){
   const pct=Math.round((etapa/(telas.length-1))*100);
   const etapaInfo=ETAPAS[etapa+1]||ETAPAS[ETAPAS.length-1];
 
-  return <div style={{fontFamily:"'Inter','Segoe UI',sans-serif",background:C.slate,minHeight:"100vh",color:C.text}}>
-    <style>{`*{box-sizing:border-box}input,textarea{font-family:inherit}input[type=range]{-webkit-appearance:none;height:6px;border-radius:99px;outline:none;background:${C.slateDeep}}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${C.amber};cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}`}</style>
+  return <div style={{fontFamily:"'Inter','Segoe UI',sans-serif",background:C.slate,minHeight:"100dvh",color:C.text}}>
+    <style>{`html,body{overscroll-behavior-y:none;background:${C.slate}}*{box-sizing:border-box}input,textarea{font-family:inherit}input[type=range]{-webkit-appearance:none;height:6px;border-radius:99px;outline:none;background:${C.slateDeep}}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${C.amber};cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}`}</style>
 
     {etapa>0&&<>
       <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:"12px 16px",color:C.white}}>
