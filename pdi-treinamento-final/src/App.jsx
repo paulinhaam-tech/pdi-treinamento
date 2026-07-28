@@ -107,7 +107,7 @@ const INICIAL = {
   conquistas:{ c1:"", c2:"", c3:"" },
   jornada:{ formacoes:"", marcos:[{ano:"",titulo:""}] },
   objetivos:{ legado:"", cargoShort:"", cargoShortText:"", cargoMid:"", cargoMidText:"", cargoLong:"", cargoLongText:"", realidade:"" },
-  swot:{ forcas:[], forcasOutros:"", fraquezas:[], fraquezasOutros:"", oportunidades:[], oportunidadesOutros:"", ameacas:[], ameacasOutros:"" },
+  swot:{ forcas:[], forcasOutros:"", fraquezas:[], fraquezasOutros:"", oportunidades:[], oportunidadesOutros:"", ameacas:[], ameacasOutros:"", estrategia:"" },
   habilidades:{},
   rodaVida: AREAS_RODA.reduce((a,r)=>({...a,[r]:{nota:5,melhorar:""}}),{}),
   quizRespostas: {},
@@ -223,6 +223,7 @@ function calcPontos(d){
   add(d.jornada.formacoes,15);add(d.jornada.marcos?.some(m=>m.titulo),15);
   add(d.objetivos.cargoShort,10);add(d.objetivos.legado,20);add(d.objetivos.realidade,15);
   if(d.swot.forcas.length&&d.swot.fraquezas.length&&d.swot.oportunidades.length&&d.swot.ameacas.length)c+=30;
+  add(d.swot.estrategia,20);
   c+=Math.min(Object.values(d.habilidades).filter(v=>v>0).length*2,20);
   c+=Math.min(Object.values(d.rodaVida).filter(r=>r.melhorar?.length>2).length*3,24);
   add(d.sabotadorPrincipal,10);
@@ -233,7 +234,7 @@ function calcPontos(d){
   [d.intencao,d.sobreMim.frase,
    d.conquistas.c1,d.conquistas.c2,d.conquistas.c3,d.jornada.formacoes,
    d.objetivos.legado,d.objetivos.realidade,
-   d.swot.forcasOutros,d.swot.fraquezasOutros,d.sabComo,
+   d.swot.forcasOutros,d.swot.fraquezasOutros,d.swot.estrategia,d.sabComo,
    d.medida1,d.medida2,d.medida3,
   ].forEach(t=>{if(!t)return;if(t.length>150)q+=18;else if(t.length>80)q+=10;else if(t.length>30)q+=5;});
   q=Math.min(q,300);
@@ -518,6 +519,13 @@ function TelaSwot({d,set,next,prev}){
         <Campo value={s[`${sec.k}Outros`]} onChange={v=>set({...d,swot:{...s,[`${sec.k}Outros`]:v}})} placeholder={sec.ph}/>
       </Card>
     ))}
+    <Card style={{borderLeft:`4px solid ${C.amber}`}}>
+      <Titulo>🎯 Como vou usar meu SWOT a meu favor</Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:10,lineHeight:1.6}}>
+        Olhe para o que você marcou acima e conecte: <strong>qual força sua pode aproveitar qual oportunidade?</strong> E o que você vai fazer para que um ponto de desenvolvimento não te atrapalhe nesse caminho?
+      </div>
+      <Campo value={s.estrategia} onChange={v=>set({...d,swot:{...s,estrategia:v}})} placeholder="Ex: vou usar minha facilidade com dados para assumir a análise do novo projeto, que a liderança já sinalizou apoiar. Para não travar por insegurança, combino uma revisão rápida com a minha gestora em vez de refazer sozinha várias vezes." multi/>
+    </Card>
     <Nav prev={prev} next={next}/>
   </div>;
 }
@@ -931,11 +939,11 @@ function TelaConclusao({d,set}){
         {l:"🔴 AMEAÇAS",cor:OR,itens:[...d.swot.ameacas,d.swot.ameacasOutros].filter(Boolean)},
       ];
       swotItems.forEach((q,i)=>{
-        const col=i%2,row=Math.floor(i/2),x=0.467+col*3.84,y=1.22+row*2.7;
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:2.55,fill:{color:WH},rectRadius:.1});
+        const col=i%2,row=Math.floor(i/2),x=0.467+col*3.84,y=1.22+row*2.5;
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:2.35,fill:{color:WH},rectRadius:.1});
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:.42,fill:{color:q.cor},rectRadius:.1});
         sl.addText(q.l,{x,y,w:3.627,h:.42,fontSize:8,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(q.itens.slice(0,5).map(v=>`• ${v}`).join("\n")||"–",{x:x+0.133,y:y+.48,w:3.36,h:2.0,fontSize:10,color:N,fontFace:"Calibri",valign:"top",margin:2});});
+        sl.addText(q.itens.slice(0,5).map(v=>`• ${v}`).join("\n")||"–",{x:x+0.133,y:y+.48,w:3.36,h:1.8,fontSize:10,color:N,fontFace:"Calibri",valign:"top",margin:2});});
       // Habilidades radar (barras à direita)
       sl.addText("🎯  Habilidades do Futuro",{x:8,y:1.22,w:4.8,h:.38,fontSize:12,bold:true,color:N,fontFace:"Calibri",margin:0});
       HABILIDADES.forEach((h,i)=>{
@@ -946,11 +954,10 @@ function TelaConclusao({d,set}){
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:11.667,y:y+.1,w:.9,h:.14,fill:{color:SD},rectRadius:.04});
         if(nota>0)sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:11.667,y:y+.1,w:Math.max(1.2*(nota/5),0.053),h:.14,fill:{color:cor},rectRadius:.04});});
       // Estratégia SWOT
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.35,y:6.64,w:12.4,h:.72,fill:{color:N},rectRadius:.1});
-      sl.addText("🎯  Como vou usar meu SWOT a meu favor",{x:.55,y:6.7,w:11.867,h:.28,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      const forcasArr=d.swot.forcas.slice(0,2);const oopArr=d.swot.oportunidades.slice(0,1);
-      const estrategia=forcasArr.length>0&&oopArr.length>0?`Usar ${forcasArr.join(" e ")} para aproveitar ${oopArr[0]}.`:"[Complete com sua estratégia]";
-      sl.addText(estrategia,{x:.55,y:6.98,w:11.867,h:.32,fontSize:10,color:WH,fontFace:"Calibri",margin:0});}
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.35,y:6.25,w:12.4,h:1.05,fill:{color:N},rectRadius:.1});
+      sl.addText("🎯  Como vou usar meu SWOT a meu favor",{x:.55,y:6.33,w:11.867,h:.28,fontSize:10,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      const estrategia=d.swot.estrategia||"[Escreva aqui como você vai usar suas forças para aproveitar suas oportunidades]";
+      sl.addText(estrategia,{x:.55,y:6.64,w:11.867,h:.62,fontSize:10,color:WH,fontFace:"Calibri",margin:0});}
 
       // ── S7.5 RODA DA VIDA (oculto) ────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
