@@ -1608,18 +1608,18 @@ export default function App(){
       <div style={{background:C.navyMid,padding:"6px 14px",display:"flex",gap:4,overflowX:"auto"}}>
         {ETAPAS.slice(1).map((e,i)=>{
           const jaVisitou = i+1<etapa;
-          const clicavel = jaVisitou || i+1===etapa;
-          return <div key={e.id} title={jaVisitou?`Revisar: ${e.titulo}`:e.titulo}
-            onClick={clicavel?()=>setEtapa(i+1):undefined}
-            style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,cursor:clicavel?"pointer":"default",
+          const futura = i+1>etapa;
+          return <div key={e.id} title={jaVisitou?`Revisar: ${e.titulo}`:futura?`Ir para: ${e.titulo}`:e.titulo}
+            onClick={()=>setEtapa(i+1)}
+            style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,cursor:"pointer",
             background:i+1===etapa?C.amber:jaVisitou?`${C.green}55`:"transparent",
-            border:`1px solid ${i+1===etapa?C.amber:jaVisitou?`${C.green}88`:"transparent"}`,
-            opacity:i+1>etapa+1?.45:1}}>
+            border:`1px solid ${i+1===etapa?C.amber:jaVisitou?`${C.green}88`:C.navyLight}`,
+            opacity:futura?.65:1}}>
             {e.icon}
           </div>;
         })}
       </div>
-      <div style={{fontSize:9.5,color:C.slateDeep,textAlign:"center",padding:"3px 14px 0",background:C.navyMid}}>💡 toque num ícone já preenchido (verde) pra revisar</div>
+      <div style={{fontSize:9.5,color:C.slateDeep,textAlign:"center",padding:"3px 14px 0",background:C.navyMid}}>💡 toque em qualquer ícone pra ir direto pra aquela etapa</div>
     </>}
 
     <div style={{padding:etapa===0?0:14}}>{telas[etapa]}</div>
