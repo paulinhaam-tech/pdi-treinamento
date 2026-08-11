@@ -475,7 +475,9 @@ function TelaJornada({d,set,next,prev}){
       <div style={{fontWeight:800,fontSize:16}}>Minha Jornada</div>
     </Card>
     <Card>
-      <Campo label="Formações (cursos, graduações, certificações)" value={j.formacoes} onChange={v=>upd({formacoes:v})} placeholder="Ex: Graduação em Administração — FGV (2018)" multi/>
+      <Titulo>📚 Formações</Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:10}}>Cursos, graduações, certificações — o que você estudou ao longo da carreira.</div>
+      <Campo value={j.formacoes} onChange={v=>upd({formacoes:v})} placeholder="Ex: Graduação em Administração — FGV (2018)" multi/>
     </Card>
     <Card>
       <Titulo>📍 Marcos Profissionais <span style={{fontWeight:400,color:C.textMid}}>({j.marcos.filter(m=>m.ano||m.titulo).length}/{MARCOS_MAX})</span></Titulo>
@@ -930,13 +932,15 @@ function TelaConclusao({d,set}){
       // Marcos — linha do tempo horizontal (até 10), com cartões conectados à linha
       sl.addText("📍  Marcos Profissionais",{x:.65,y:3.2,w:8,h:.35,fontSize:14,bold:true,color:N,fontFace:"Calibri",margin:0});
       const marcos=d.jornada.marcos.filter(m=>m.ano||m.titulo).slice(0,MARCOS_MAX);
-      const tlY=5.15,tlX0=.9,tlX1=12.433;
       if(marcos.length){
+        const dotR=.09,stemLen=.16,cardH=1.02,pad=.09,margemSlide=.5;
+        // largura do cartão pretendida, decrescendo conforme aumenta a quantidade de marcos
+        const candCardW=marcos.length<=3?2.4:marcos.length<=6?1.7:marcos.length<=8?1.3:1.05;
+        // a linha do tempo reserva espaço nas pontas do tamanho de meio cartão + margem,
+        // assim os cartões das extremidades nunca ultrapassam a borda do slide
+        const tlY=5.15,tlX0=margemSlide+candCardW/2,tlX1=13.333-margemSlide-candCardW/2;
         const span=marcos.length>1?(tlX1-tlX0)/(marcos.length-1):0;
-        const colW=span>0?span:2.6;
-        const cardW=Math.max(.85,Math.min(colW*0.86,2.6)); // gutter entre cartões
-        const dotR=.09,stemLen=.16,cardH=1.02,pad=.09;
-        // tamanho de fonte se adapta à quantidade de marcos, pra não espremer nem sobrar espaço
+        const cardW=marcos.length>1?Math.min(candCardW,Math.max(span*0.92,.85)):candCardW;
         const [anoFS,tituloFS,maxChars]=marcos.length<=3?[13,10.5,70]:marcos.length<=6?[12,9.5,50]:[10.5,8,32];
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:tlX0,y:tlY-.022,w:tlX1-tlX0,h:.044,fill:{color:AM},line:{color:AM},rectRadius:.02});
         marcos.forEach((m,i)=>{
@@ -948,13 +952,13 @@ function TelaConclusao({d,set}){
           sl.addShape(prs.shapes.RECTANGLE,{x:cx-.011,y:stemY,w:.022,h:stemLen,fill:{color:AM},line:{color:AM}});
           sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:cx-cardW/2,y:cardY,w:cardW,h:cardH,fill:{color:WH},line:{color:AM,width:.75},rectRadius:.09});
           sl.addText(m.ano||"",{x:cx-cardW/2+pad,y:cardY+.08,w:cardW-2*pad,h:.3,fontSize:anoFS,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
-          sl.addText(tituloTxt,{x:cx-cardW/2+pad,y:cardY+.4,w:cardW-2*pad,h:cardH-.48,fontSize:tituloFS,color:N,align:"center",valign:"top",fontFace:"Calibri",margin:0});
+          sl.addText(tituloTxt,{x:cx-cardW/2+pad,y:cardY+.4,w:cardW-2*pad,h:cardH-.48,fontSize:tituloFS,color:N,align:"center",valign:"top",fontFace:"Calibri",margin:0,shrinkText:true});
           sl.addShape(prs.shapes.OVAL,{x:cx-dotR,y:tlY-dotR,w:dotR*2,h:dotR*2,fill:{color:AM},line:{color:WH,width:1.5}});
         });
         sl.addText("💡  Ajuste marcos, datas e textos diretamente no PowerPoint conforme sua trajetória.",
           {x:.4,y:7.05,w:12.533,h:.3,fontSize:9,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});
       }else{
-        sl.addText("Adicione seus marcos profissionais na próxima edição do seu PDI.",{x:tlX0,y:tlY-.2,w:tlX1-tlX0,h:.4,fontSize:11,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});
+        sl.addText("Adicione seus marcos profissionais na próxima edição do seu PDI.",{x:.9,y:4.95,w:11.533,h:.4,fontSize:11,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});
       }}
 
       // ── S6 OBJETIVOS ──────────────────────────────────────────
@@ -1602,15 +1606,20 @@ export default function App(){
         <div style={{fontSize:10,color:C.amber,fontWeight:700,marginTop:4}}>{etapaInfo.icon} {etapaInfo.titulo}</div>
       </div>
       <div style={{background:C.navyMid,padding:"6px 14px",display:"flex",gap:4,overflowX:"auto"}}>
-        {ETAPAS.slice(1).map((e,i)=>(
-          <div key={e.id} title={e.titulo} style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,
-            background:i+1===etapa?C.amber:i+1<etapa?`${C.green}55`:"transparent",
-            border:`1px solid ${i+1===etapa?C.amber:i+1<etapa?`${C.green}88`:"transparent"}`,
+        {ETAPAS.slice(1).map((e,i)=>{
+          const jaVisitou = i+1<etapa;
+          const clicavel = jaVisitou || i+1===etapa;
+          return <div key={e.id} title={jaVisitou?`Revisar: ${e.titulo}`:e.titulo}
+            onClick={clicavel?()=>setEtapa(i+1):undefined}
+            style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,cursor:clicavel?"pointer":"default",
+            background:i+1===etapa?C.amber:jaVisitou?`${C.green}55`:"transparent",
+            border:`1px solid ${i+1===etapa?C.amber:jaVisitou?`${C.green}88`:"transparent"}`,
             opacity:i+1>etapa+1?.45:1}}>
             {e.icon}
-          </div>
-        ))}
+          </div>;
+        })}
       </div>
+      <div style={{fontSize:9.5,color:C.slateDeep,textAlign:"center",padding:"3px 14px 0",background:C.navyMid}}>💡 toque num ícone já preenchido (verde) pra revisar</div>
     </>}
 
     <div style={{padding:etapa===0?0:14}}>{telas[etapa]}</div>
