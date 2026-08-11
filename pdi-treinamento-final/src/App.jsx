@@ -29,6 +29,17 @@ const C = {
 };
 
 
+// ── PALETAS PARA O POWERPOINT (personalização do participante) ─────
+// A cor de destaque (hoje âmbar) é trocada em todo o PPTX pela cor escolhida.
+const PALETAS = [
+  { id:"amber",  nome:"Âmbar",     cor:"F5A623" },
+  { id:"teal",   nome:"Turquesa",  cor:"0891B2" },
+  { id:"purple", nome:"Roxo",      cor:"7C3AED" },
+  { id:"green",  nome:"Verde",     cor:"1DB87A" },
+  { id:"rose",   nome:"Rosê",      cor:"EC4899" },
+  { id:"coral",  nome:"Coral",     cor:"E05252" },
+];
+
 // ── DADOS ESTÁTICOS ───────────────────────────────────────────────
 const ETAPAS = [
   { id:"senha",     icon:"🔑", titulo:"Acesso" },
@@ -120,6 +131,7 @@ const INICIAL = {
   gestor:"", gestorData:"",
   medida1:"", medida2:"", medida3:"",
   fraseF:"",
+  paletaCor:"F5A623",
 };
 
 // ── UI HELPERS ────────────────────────────────────────────────────
@@ -166,18 +178,37 @@ const ACESSO_ATE = "";
 const CONTATO_LGPD = "a área de RH responsável pelo treinamento";
 
 // ── RASCUNHO NO PRÓPRIO APARELHO ──────────────────────────────────
-// Guarda o preenchimento em andamento SOMENTE no navegador da pessoa (sessionStorage).
-// Nada é enviado para servidor. O navegador apaga sozinho ao fechar a aba,
-// e o app também apaga assim que o PowerPoint é baixado.
-const RASCUNHO_KEY = "pdi_rascunho";
+// Guarda o preenchimento em andamento SOMENTE no navegador da pessoa.
+// Nada é enviado para servidor. Usa localStorage (mais resistente que
+// sessionStorage a recarregamentos acidentais, "puxar para atualizar" no
+// celular e navegadores in-app) com validade de 12h para não sobrar
+// rascunho de outra pessoa num aparelho compartilhado. Se o navegador
+// bloquear storage (ex: aba anônima), cai num fallback em memória —
+// não protege contra fechar a aba, mas protege contra reload acidental.
+const RASCUNHO_KEY = "pdi_rascunho_v2";
+const RASCUNHO_VALIDADE_MS = 12*60*60*1000; // 12 horas
+let _rascunhoMemoria = null; // fallback quando storage não está disponível
+
 function lerRascunho(){
-  try{const s=sessionStorage.getItem(RASCUNHO_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+  try{
+    const s = localStorage.getItem(RASCUNHO_KEY);
+    if(!s) return _rascunhoMemoria;
+    const r = JSON.parse(s);
+    if(!r || typeof r.salvoEm!=="number" || (Date.now()-r.salvoEm)>RASCUNHO_VALIDADE_MS){
+      localStorage.removeItem(RASCUNHO_KEY);
+      return _rascunhoMemoria;
+    }
+    return r;
+  }catch(e){ return _rascunhoMemoria; }
 }
 function salvarRascunho(etapa,dados){
-  try{sessionStorage.setItem(RASCUNHO_KEY,JSON.stringify({etapa,dados}));}catch(e){}
+  const r = {etapa,dados,salvoEm:Date.now()};
+  _rascunhoMemoria = r;
+  try{ localStorage.setItem(RASCUNHO_KEY, JSON.stringify(r)); }catch(e){}
 }
 function limparRascunho(){
-  try{sessionStorage.removeItem(RASCUNHO_KEY);}catch(e){}
+  _rascunhoMemoria = null;
+  try{ localStorage.removeItem(RASCUNHO_KEY); }catch(e){}
 }
 
 async function dbSalvar(d, pts) {
@@ -432,10 +463,12 @@ function TelaConquistas({d,set,next,prev}){
 }
 
 // ── TELA JORNADA ──────────────────────────────────────────────────
+const MARCOS_MAX = 10;
 function TelaJornada({d,set,next,prev}){
   const j=d.jornada;const upd=obj=>set({...d,jornada:{...j,...obj}});
   const addM=()=>set({...d,jornada:{...j,marcos:[...j.marcos,{ano:"",titulo:""}]}});
   const updM=(i,obj)=>{const m=[...j.marcos];m[i]={...m[i],...obj};set({...d,jornada:{...j,marcos:m}});};
+  const rmM=(i)=>{const m=j.marcos.filter((_,idx)=>idx!==i);set({...d,jornada:{...j,marcos:m.length?m:[{ano:"",titulo:""}]}});};
   return <div>
     <Card style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,color:C.white}}>
       <div style={{fontSize:26,marginBottom:4}}>🗺️</div>
@@ -445,15 +478,18 @@ function TelaJornada({d,set,next,prev}){
       <Campo label="Formações (cursos, graduações, certificações)" value={j.formacoes} onChange={v=>upd({formacoes:v})} placeholder="Ex: Graduação em Administração — FGV (2018)" multi/>
     </Card>
     <Card>
-      <Titulo>📍 Marcos Profissionais</Titulo>
-      <div style={{fontSize:11,color:C.textMid,marginBottom:10}}>Os momentos que definiram sua trajetória.</div>
+      <Titulo>📍 Marcos Profissionais <span style={{fontWeight:400,color:C.textMid}}>({j.marcos.filter(m=>m.ano||m.titulo).length}/{MARCOS_MAX})</span></Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:10}}>Os momentos que definiram sua trajetória. No PowerPoint eles viram uma linha do tempo horizontal.</div>
       {j.marcos.map((m,i)=>(
-        <div key={i} style={{display:"grid",gridTemplateColumns:"80px 1fr",gap:8,marginBottom:8,background:C.slate,borderRadius:10,padding:10}}>
-          <input value={m.ano} onChange={e=>updM(i,{ano:e.target.value})} placeholder="Ano" style={{padding:"7px 9px",border:`1.5px solid ${C.slateDeep}`,borderRadius:8,fontSize:12,outline:"none",background:C.white,fontFamily:"inherit"}}/>
-          <input value={m.titulo} onChange={e=>updM(i,{titulo:e.target.value})} placeholder="O que aconteceu?" style={{padding:"7px 9px",border:`1.5px solid ${C.slateDeep}`,borderRadius:8,fontSize:12,outline:"none",background:C.white,fontFamily:"inherit"}}/>
+        <div key={i} style={{display:"grid",gridTemplateColumns:"24px 72px 1fr auto",gap:8,marginBottom:8,background:C.slate,borderRadius:10,padding:10,alignItems:"center"}}>
+          <div style={{width:22,height:22,borderRadius:"50%",background:C.teal,color:C.white,fontWeight:800,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</div>
+          <input value={m.ano} onChange={e=>updM(i,{ano:e.target.value})} placeholder="Ano" style={{padding:"7px 8px",border:`1.5px solid ${C.slateDeep}`,borderRadius:8,fontSize:12,outline:"none",background:C.white,fontFamily:"inherit",minWidth:0}}/>
+          <input value={m.titulo} onChange={e=>updM(i,{titulo:e.target.value})} placeholder="O que aconteceu?" style={{padding:"7px 9px",border:`1.5px solid ${C.slateDeep}`,borderRadius:8,fontSize:12,outline:"none",background:C.white,fontFamily:"inherit",minWidth:0}}/>
+          {j.marcos.length>1&&<button onClick={()=>rmM(i)} aria-label="Remover marco" style={{width:26,height:26,border:"none",borderRadius:8,background:`${C.red}18`,color:C.red,fontWeight:800,fontSize:13,cursor:"pointer",flexShrink:0}}>✕</button>}
         </div>
       ))}
-      {j.marcos.length<4&&<button onClick={addM} style={{width:"100%",padding:8,background:`${C.teal}15`,color:C.teal,border:`1.5px solid ${C.teal}44`,borderRadius:8,fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Adicionar marco</button>}
+      {j.marcos.length>=6&&<div style={{fontSize:10,color:C.textLight,marginBottom:8,lineHeight:1.5}}>💡 A ordem aqui não precisa ser cronológica — no PowerPoint dá pra reorganizar como quiser.</div>}
+      {j.marcos.length<MARCOS_MAX&&<button onClick={addM} style={{width:"100%",padding:8,background:`${C.teal}15`,color:C.teal,border:`1.5px solid ${C.teal}44`,borderRadius:8,fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Adicionar marco</button>}
     </Card>
     <Nav prev={prev} next={next}/>
   </div>;
@@ -713,6 +749,9 @@ function TelaSabResult({d,set,next,prev}){
       <div style={{fontSize:12,color:C.navy,fontStyle:"italic",padding:"10px 12px",background:C.slate,borderRadius:8,marginBottom:10}}>{info.frase}</div>
       <div style={{fontSize:11,color:C.textMid}}>Traços: {info.tracos}</div>
       {sab2&&<div style={{marginTop:10,fontSize:11,color:C.textMid}}>Traços secundários: {emoji2} {sab2} — {info2.tracos}</div>}
+      <div style={{marginTop:10,fontSize:10,color:C.textLight,lineHeight:1.5,fontStyle:"italic"}}>
+        ℹ️ Este é um quiz rápido de referência inicial e não substitui o teste completo de Sabotadores (Positive Intelligence), desenvolvido por Shirzad Chamine.
+      </div>
     </Card>
     <Card>
       <Titulo>Meu plano contra o {sab}</Titulo>
@@ -763,7 +802,7 @@ function TelaConclusao({d,set}){
     try{
       if(!window.PptxGenJS){await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
       const prs=new window.PptxGenJS();prs.defineLayout({name:"CUSTOM",width:13.333,height:7.5});prs.layout="CUSTOM";
-      const N="0F1D3A",NM="1A3160",NL="234080",AM="F5A623",WH="FFFFFF",SL="EEF2FA",SD="C5D0E6";
+      const N="0F1D3A",NM="1A3160",NL="234080",AM=d.paletaCor||"F5A623",WH="FFFFFF",SL="EEF2FA",SD="C5D0E6";
       const GR="1DB87A",TL="0891B2",PU="7C3AED",OR="EA580C",RE="E05252",PI="EC4899";
       const hoje=d.data?new Date(d.data+"T12:00:00").toLocaleDateString("pt-BR"):new Date().toLocaleDateString("pt-BR");
 
@@ -884,20 +923,39 @@ function TelaConclusao({d,set}){
       sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.3,fill:{color:N},line:{color:N}});
       sl.addText("MINHA JORNADA",{x:.6,y:.1,w:10.667,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
       sl.addText("Formações & Marcos Profissionais",{x:.6,y:.42,w:10.667,h:.7,fontSize:22,bold:true,color:WH,fontFace:"Calibri",margin:0});
-      // Formações
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.4,w:6.067,h:5.55,fill:{color:NM},rectRadius:.12});
-      sl.addText("📚  Formações",{x:.65,y:1.55,w:5.467,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      sl.addText(d.jornada.formacoes||"[Suas formações]",{x:.65,y:2.02,w:5.467,h:4.75,fontSize:13,color:WH,fontFace:"Calibri",valign:"top",margin:4});
-      // Marcos
-      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:6.867,y:1.4,w:5.933,h:5.55,fill:{color:NM},rectRadius:.12});
-      sl.addText("📍  Marcos Profissionais",{x:7.133,y:1.55,w:5.467,h:.4,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
-      const marcos=d.jornada.marcos.filter(m=>m.ano||m.titulo).slice(0,4);
-      marcos.forEach((m,i)=>{
-        const y=2.05+i*1.1;
-        sl.addShape(prs.shapes.OVAL,{x:7.133,y:y+.05,w:.72,h:.72,fill:{color:AM},line:{color:AM}});
-        sl.addText(m.ano||"",{x:7.133,y:y+.05,w:.72,h:.72,fontSize:10,bold:true,color:N,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(m.titulo||"",{x:8.267,y:y+.12,w:4.333,h:.52,fontSize:12,color:WH,fontFace:"Calibri",valign:"middle",margin:2});
-        if(i<marcos.length-1)sl.addShape(prs.shapes.RECTANGLE,{x:7.56,y:y+.8,w:.08,h:.35,fill:{color:AM},line:{color:AM}});});}
+      // Formações (faixa superior, largura total)
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.4,y:1.4,w:12.533,h:1.55,fill:{color:NM},rectRadius:.12});
+      sl.addText("📚  Formações",{x:.65,y:1.53,w:12.03,h:.34,fontSize:13,bold:true,color:AM,fontFace:"Calibri",margin:0});
+      sl.addText(d.jornada.formacoes||"[Suas formações]",{x:.65,y:1.9,w:12.03,h:.98,fontSize:12,color:WH,fontFace:"Calibri",valign:"top",margin:4});
+      // Marcos — linha do tempo horizontal (até 10), com cartões conectados à linha
+      sl.addText("📍  Marcos Profissionais",{x:.65,y:3.2,w:8,h:.35,fontSize:14,bold:true,color:N,fontFace:"Calibri",margin:0});
+      const marcos=d.jornada.marcos.filter(m=>m.ano||m.titulo).slice(0,MARCOS_MAX);
+      const tlY=5.15,tlX0=.9,tlX1=12.433;
+      if(marcos.length){
+        const span=marcos.length>1?(tlX1-tlX0)/(marcos.length-1):0;
+        const colW=span>0?span:2.6;
+        const cardW=Math.max(.85,Math.min(colW*0.86,2.6)); // gutter entre cartões
+        const dotR=.09,stemLen=.16,cardH=1.02,pad=.09;
+        // tamanho de fonte se adapta à quantidade de marcos, pra não espremer nem sobrar espaço
+        const [anoFS,tituloFS,maxChars]=marcos.length<=3?[13,10.5,70]:marcos.length<=6?[12,9.5,50]:[10.5,8,32];
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:tlX0,y:tlY-.022,w:tlX1-tlX0,h:.044,fill:{color:AM},line:{color:AM},rectRadius:.02});
+        marcos.forEach((m,i)=>{
+          const cx=marcos.length>1?tlX0+i*span:(tlX0+tlX1)/2;
+          const acima=i%2===0;
+          const tituloTxt=(m.titulo||"").length>maxChars?`${m.titulo.slice(0,maxChars-2)}…`:(m.titulo||"");
+          const cardY=acima?tlY-dotR-stemLen-cardH:tlY+dotR+stemLen;
+          const stemY=acima?cardY+cardH:tlY+dotR;
+          sl.addShape(prs.shapes.RECTANGLE,{x:cx-.011,y:stemY,w:.022,h:stemLen,fill:{color:AM},line:{color:AM}});
+          sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:cx-cardW/2,y:cardY,w:cardW,h:cardH,fill:{color:WH},line:{color:AM,width:.75},rectRadius:.09});
+          sl.addText(m.ano||"",{x:cx-cardW/2+pad,y:cardY+.08,w:cardW-2*pad,h:.3,fontSize:anoFS,bold:true,color:AM,align:"center",fontFace:"Calibri",margin:0});
+          sl.addText(tituloTxt,{x:cx-cardW/2+pad,y:cardY+.4,w:cardW-2*pad,h:cardH-.48,fontSize:tituloFS,color:N,align:"center",valign:"top",fontFace:"Calibri",margin:0});
+          sl.addShape(prs.shapes.OVAL,{x:cx-dotR,y:tlY-dotR,w:dotR*2,h:dotR*2,fill:{color:AM},line:{color:WH,width:1.5}});
+        });
+        sl.addText("💡  Ajuste marcos, datas e textos diretamente no PowerPoint conforme sua trajetória.",
+          {x:.4,y:7.05,w:12.533,h:.3,fontSize:9,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});
+      }else{
+        sl.addText("Adicione seus marcos profissionais na próxima edição do seu PDI.",{x:tlX0,y:tlY-.2,w:tlX1-tlX0,h:.4,fontSize:11,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});
+      }}
 
       // ── S6 OBJETIVOS ──────────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -1006,7 +1064,9 @@ function TelaConclusao({d,set}){
         const y=1.42+i*1.45;
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:5.867,y,w:6.933,h:1.32,fill:{color:WH},rectRadius:.1});
         sl.addText(it.l,{x:6.107,y:y+.1,w:6.453,h:.3,fontSize:10,bold:true,color:TL,fontFace:"Calibri",margin:0});
-        sl.addText(it.v||"[preencher]",{x:6.107,y:y+.42,w:6.453,h:.82,fontSize:12,color:N,fontFace:"Calibri",margin:0,valign:"top"});});}
+        sl.addText(it.v||"[preencher]",{x:6.107,y:y+.42,w:6.453,h:.82,fontSize:12,color:N,fontFace:"Calibri",margin:0,valign:"top"});});
+      sl.addText("ℹ️ Quiz de referência inicial — não substitui o teste completo de Sabotadores (Positive Intelligence), de Shirzad Chamine.",
+        {x:.4,y:7.14,w:12.533,h:.3,fontSize:8,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S9 COMPROMISSO 7 DIAS ─────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
@@ -1122,6 +1182,23 @@ function TelaConclusao({d,set}){
       <Titulo>✍️ Sua frase de encerramento</Titulo>
       <textarea value={d.fraseF||""} onChange={e=>set({...d,fraseF:e.target.value})} placeholder='"Meu desenvolvimento começa com uma decisão: a de agir."'
         style={{width:"100%",padding:"10px 12px",border:`1.5px solid ${C.amber}`,borderRadius:10,fontSize:13,outline:"none",background:C.slate,fontFamily:"inherit",resize:"vertical",minHeight:65,fontStyle:"italic"}}/>
+    </Card>
+
+    <Card>
+      <Titulo>🎨 Cor de destaque do seu PowerPoint</Titulo>
+      <div style={{fontSize:11,color:C.textMid,marginBottom:10,lineHeight:1.6}}>
+        Escolha a cor que vai aparecer nos títulos e destaques do seu PDI, para deixar do seu jeito.
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+        {PALETAS.map(p=>{
+          const sel=(d.paletaCor||"F5A623")===p.cor;
+          return <button key={p.id} onClick={()=>set({...d,paletaCor:p.cor})} title={p.nome}
+            style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"6px 4px",border:`2px solid ${sel?`#${p.cor}`:C.slateDeep}`,borderRadius:12,background:sel?`#${p.cor}12`:C.white,cursor:"pointer",width:64}}>
+            <span style={{width:26,height:26,borderRadius:"50%",background:`#${p.cor}`,border:`2px solid ${C.white}`,boxShadow:"0 0 0 1px "+C.slateDeep}}/>
+            <span style={{fontSize:9.5,fontWeight:sel?800:600,color:sel?C.navy:C.textMid}}>{p.nome}</span>
+          </button>;
+        })}
+      </div>
     </Card>
 
     <Card>
@@ -1452,7 +1529,7 @@ export default function App(){
   const[etapa,setEtapa]=useState(()=>{const r=lerRascunho();return typeof r?.etapa==="number"?r.etapa:0;});
   const[dados,setDados]=useState(()=>{
     const r=lerRascunho();
-    if(r?.dados&&r.dados._sid)return r.dados;
+    if(r?.dados&&r.dados._sid)return {...INICIAL,...r.dados};
     return {...INICIAL,
       _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
       _inicio:Date.now(),
@@ -1460,6 +1537,8 @@ export default function App(){
   });
   const[showMsg,setShowMsg]=useState(false);
   const[proxEtapa,setProxEtapa]=useState(0);
+  const[restaurado]=useState(()=>{const r=lerRascunho();return !!(r?.dados&&r.dados._sid&&r.etapa>0);});
+  const[avisoRestaurado,setAvisoRestaurado]=useState(restaurado);
 
   // Guarda o rascunho no próprio aparelho, para não perder em recarregamento acidental
   useEffect(()=>{ if(etapa>0) salvarRascunho(etapa,dados); },[etapa,dados]);
@@ -1504,6 +1583,11 @@ export default function App(){
 
   return <div style={{fontFamily:"'Inter','Segoe UI',sans-serif",background:C.slate,minHeight:"100dvh",color:C.text}}>
     <style>{`html,body{overscroll-behavior-y:none;background:${C.slate}}*{box-sizing:border-box}input,textarea{font-family:inherit}input[type=range]{-webkit-appearance:none;height:6px;border-radius:99px;outline:none;background:${C.slateDeep}}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${C.amber};cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}`}</style>
+
+    {etapa>0&&avisoRestaurado&&<div style={{background:C.green,color:C.white,padding:"9px 16px",fontSize:11.5,fontWeight:700,textAlign:"center",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+      <span>✅ Continuando de onde você parou — nada foi perdido.</span>
+      <span onClick={()=>setAvisoRestaurado(false)} style={{cursor:"pointer",opacity:.85,flexShrink:0}}>✕</span>
+    </div>}
 
     {etapa>0&&<>
       <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:"12px 16px",color:C.white}}>
