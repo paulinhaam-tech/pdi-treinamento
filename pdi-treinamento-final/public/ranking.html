@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking ao Vivo · PDI na Prática</title>
+<style>
+  :root{
+    --navy:#0F1D3A; --navy-mid:#1A3160; --navy-light:#234080;
+    --amber:#F5A623; --slate-deep:#C5D0E6; --white:#FFFFFF;
+    --gold:#F5C518; --silver:#C0C0C0; --bronze:#CD7F32;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--navy);font-family:'Inter',-apple-system,'Segoe UI',sans-serif;padding:32px;min-height:100vh;}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  .header{text-align:center;margin-bottom:32px;}
+  .kicker{font-size:13px;color:var(--amber);font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+  .title{font-size:36px;font-weight:800;color:var(--white);}
+  .sub{font-size:11px;color:var(--slate-deep);margin-top:6px;}
+  .podio{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:20px;margin-bottom:32px;align-items:end;}
+  .pcard{border-radius:20px;padding:24px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;background:linear-gradient(160deg,var(--navy-mid),var(--navy-light));}
+  .pcard.p1{min-height:230px;animation:pulse 2s infinite;}
+  .pcard.p2, .pcard.p3{min-height:190px;}
+  .medalha{margin-bottom:4px;}
+  .pcard.p1 .medalha{font-size:56px;}
+  .pcard.p2 .medalha, .pcard.p3 .medalha{font-size:42px;}
+  .pnome{font-weight:800;color:var(--white);margin-bottom:8px;}
+  .pcard.p1 .pnome{font-size:22px;}
+  .pcard.p2 .pnome, .pcard.p3 .pnome{font-size:18px;}
+  .ppontos{font-weight:800;line-height:1;}
+  .pcard.p1 .ppontos{font-size:42px;}
+  .pcard.p2 .ppontos, .pcard.p3 .ppontos{font-size:32px;}
+  .plabel{font-size:10px;color:var(--slate-deep);margin-bottom:8px;}
+  .pvontade{font-size:9px;padding:2px 8px;border-radius:99px;font-weight:700;}
+  .lista{background:var(--navy-mid);border-radius:16px;padding:20px;}
+  .litem{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;margin-bottom:6px;}
+  .lpos{font-size:16px;font-weight:800;color:var(--slate-deep);width:30px;}
+  .lnome{flex:1;font-weight:700;color:var(--white);font-size:14px;}
+  .lpontos{text-align:right;}
+  .lpontos .num{font-size:20px;font-weight:800;color:var(--amber);}
+  .lpontos .lbl{font-size:9px;color:var(--slate-deep);}
+  .estado{text-align:center;color:var(--slate-deep);font-size:18px;padding:60px;}
+  .rodape{text-align:center;margin-top:24px;color:var(--slate-deep);font-size:11px;}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="kicker">🏆 Ranking ao Vivo · PDI na Prática</div>
+    <div class="title">Quem tem o PDI mais completo?</div>
+    <div class="sub">Atualização automática a cada 10 segundos</div>
+  </div>
+  <div id="conteudo"><div class="estado">⏳ Carregando...</div></div>
+  <div id="rodape" class="rodape"></div>
+
+<script>
+// ── CONFIGURAÇÃO ─────────────────────────────────────────────────
+// Mesmo projeto Supabase usado pelo app principal.
+const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
+
+async function buscarRanking(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/pdi_ranking?select=*&order=pontos_total.desc&limit=50`,
+      { headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}` } }
+    );
+    if(!res.ok) return [];
+    return await res.json();
+  }catch(e){ return []; }
+}
+
+function medalha(pos){
+  return pos===0 ? {emoji:"🥇",cor:"var(--gold)"}
+       : pos===1 ? {emoji:"🥈",cor:"var(--silver)"}
+       : {emoji:"🥉",cor:"var(--bronze)"};
+}
+
+function render(ranking){
+  const conteudo = document.getElementById("conteudo");
+  const rodape = document.getElementById("rodape");
+  if(ranking.length===0){
+    conteudo.innerHTML = `<div class="estado">Aguardando participantes finalizarem...</div>`;
+    rodape.textContent = "";
+    return;
+  }
+  const top3 = ranking.slice(0,3);
+  const resto = ranking.slice(3);
+  // ordem visual: 2º, 1º, 3º (pódio)
+  const ordemVisual = [top3[1], top3[0], top3[2]];
+  const classesVisuais = ["p2","p1","p3"];
+  const posReal = [1,0,2];
+
+  let podioHtml = `<div class="podio">`;
+  ordemVisual.forEach((p, vi) => {
+    if(!p){ podioHtml += `<div></div>`; return; }
+    const pos = posReal[vi];
+    const m = medalha(pos);
+    podioHtml += `
+      <div class="pcard ${classesVisuais[vi]}" style="border:3px solid ${m.cor};box-shadow:0 0 30px ${m.cor}44;">
+        <div class="medalha">${m.emoji}</div>
+        <div class="pnome">${escapeHtml(p.apelido || `Participante ${pos+1}`)}</div>
+        <div class="ppontos" style="color:${m.cor}">${p.pontos_total ?? 0}</div>
+        <div class="plabel">pontos</div>
+        <span class="pvontade" style="background:${m.cor}22;color:${m.cor}">🔥 ${p.nivel_vontade ?? "–"}/10</span>
+      </div>`;
+  });
+  podioHtml += `</div>`;
+
+  let listaHtml = "";
+  if(resto.length>0){
+    listaHtml = `<div class="lista">`;
+    resto.forEach((p,i)=>{
+      listaHtml += `
+        <div class="litem" style="background:${i%2===0?"var(--navy)":"var(--navy-light)"}">
+          <div class="lpos">${i+4}º</div>
+          <div class="lnome">${escapeHtml(p.apelido || `Participante ${i+4}`)}</div>
+          <div class="lpontos"><div class="num">${p.pontos_total ?? 0}</div><div class="lbl">pts</div></div>
+        </div>`;
+    });
+    listaHtml += `</div>`;
+  }
+
+  conteudo.innerHTML = podioHtml + listaHtml;
+  rodape.textContent = `${ranking.length} participante(s) · ${new Date().toLocaleTimeString("pt-BR")}`;
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str ?? "";
+  return d.innerHTML;
+}
+
+async function atualizar(){
+  const dados = await buscarRanking();
+  render(dados);
+}
+
+atualizar();
+setInterval(atualizar, 10000);
+</script>
+</body>
+</html>
