@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard RH · PDI na Prática</title>
+<style>
+  :root{
+    --navy:#0F1D3A; --navy-mid:#1A3160; --navy-light:#234080;
+    --amber:#F5A623; --slate:#EEF2FA; --slate-deep:#C5D0E6;
+    --white:#FFFFFF; --green:#1DB87A; --red:#E05252;
+    --text:#0F1D3A; --text-mid:#4A5A7A; --text-light:#8A9BBB;
+    --teal:#0891B2; --purple:#7C3AED; --orange:#EA580C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;min-height:100vh;background:var(--slate);color:var(--text);}
+  .gate{min-height:100vh;background:var(--navy);display:flex;align-items:center;justify-content:center;}
+  .gate-box{background:var(--navy-mid);border-radius:16px;padding:32px;width:320px;text-align:center;}
+  .gate-emoji{font-size:36px;margin-bottom:12px;}
+  .gate-title{font-weight:800;font-size:18px;color:var(--white);margin-bottom:8px;}
+  .gate-sub{font-size:12px;color:var(--slate-deep);margin-bottom:20px;}
+  .gate-input{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--navy-light);background:var(--navy);color:var(--white);font-size:14px;outline:none;font-family:inherit;margin-bottom:12px;}
+  .gate-btn{width:100%;padding:12px;background:var(--amber);color:var(--navy);border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;}
+  .gate-erro{color:#FF8A8A;font-size:11px;margin-top:10px;min-height:14px;}
+
+  .header{background:linear-gradient(135deg,var(--navy),var(--navy-light));padding:20px 20px 16px;}
+  .h-kicker{font-size:8px;color:var(--slate-deep);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+  .h-title{font-size:22px;font-weight:800;color:var(--white);margin-bottom:4px;}
+  .h-sub{font-size:11px;color:var(--slate-deep);}
+  .h-lgpd{margin-top:10px;font-size:10px;color:var(--amber);background:#F5A62318;border-radius:8px;padding:6px 10px;display:inline-block;}
+  .h-actions{display:flex;gap:8px;margin-top:14px;}
+  .h-actions button{flex:1;padding:10px 12px;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;border:none;}
+  .btn-pdf{background:var(--amber);color:var(--navy);}
+  .btn-reset{background:transparent;color:var(--white);border:1.5px solid var(--slate-deep) !important;font-weight:700 !important;}
+  .h-dica{margin-top:8px;font-size:9px;color:var(--slate-deep);}
+
+  .conteudo{padding:14px;}
+  .secao-label{font-weight:700;font-size:11px;color:var(--text-mid);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:18px;}
+  .secao-label:first-child{margin-top:0;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  .kpi{background:var(--white);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(15,29,58,.07);}
+  .kpi-ic{font-size:18px;margin-bottom:4px;}
+  .kpi-val{font-size:24px;font-weight:800;}
+  .kpi-lbl{font-size:10px;color:var(--text-mid);}
+
+  .card{background:var(--white);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(15,29,58,.07);}
+  .card-title{font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;}
+  .item-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--slate);}
+  .item-row:last-child{border-bottom:none;}
+  .item-lbl{font-size:11px;font-weight:600;flex:1;}
+  .item-bar-wrap{display:flex;align-items:center;gap:8px;width:120px;}
+  .item-bar-bg{background:var(--slate-deep);border-radius:99px;height:8px;overflow:hidden;flex:1;}
+  .item-bar-fill{height:100%;border-radius:99px;}
+  .item-pct{font-size:12px;font-weight:700;min-width:32px;}
+
+  .energia-row{margin-bottom:10px;}
+  .energia-top{display:flex;justify-content:space-between;margin-bottom:4px;}
+  .energia-lbl{font-size:12px;font-weight:600;}
+  .energia-val{font-size:14px;font-weight:800;}
+
+  .chip{font-size:10px;font-weight:700;padding:4px 12px;border-radius:99px;}
+
+  .parecer{margin-top:12px;border-radius:12px;padding:14px;background:#F8FAFF;border:1px solid var(--slate-deep);}
+  .parecer-tag{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;padding:4px 10px;border-radius:99px;margin-bottom:10px;}
+  .parecer-tag.atencao{background:#FDEDED;color:var(--red);}
+  .parecer-tag.positivo{background:#E7F9F1;color:var(--green);}
+  .parecer-tag.neutro{background:#EEF2FA;color:var(--text-mid);}
+  .parecer-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+  .parecer-bloco{font-size:11px;line-height:1.6;color:var(--text-mid);}
+  .parecer-bloco b{color:var(--navy);display:block;font-size:10.5px;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px;}
+  .parecer-disclaimer{font-size:9.5px;color:var(--text-light);margin-top:10px;font-style:italic;line-height:1.5;}
+
+  .rodape{text-align:center;padding:16px 0;font-size:11px;color:var(--text-light);}
+
+  .so-print{display:none;}
+  @media print{
+    @page{size:A4;margin:12mm}
+    html,body{background:#fff !important;}
+    .no-print{display:none !important;}
+    .so-print{display:block !important;}
+    .conteudo > div{page-break-inside:avoid;break-inside:avoid;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-emoji">📊</div>
+    <div class="gate-title">Dashboard RH</div>
+    <div class="gate-sub">Acesso restrito — Facilitadora</div>
+    <input id="gate-senha" type="password" class="gate-input" placeholder="Senha de acesso">
+    <button id="gate-btn" class="gate-btn">Entrar</button>
+    <div id="gate-erro" class="gate-erro"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="h-kicker">Dashboard RH — Dados Anônimos</div>
+    <div class="h-title">Relatório do Treinamento PDI</div>
+    <div class="h-sub no-print" id="contagem-topo">Carregando...</div>
+    <div class="h-sub so-print" id="contagem-topo-print"></div>
+    <div class="h-lgpd">🔒 Todos os dados são anônimos (LGPD)</div>
+    <div class="h-actions no-print">
+      <button class="btn-pdf" id="btn-pdf">🖨️ Salvar relatório em PDF</button>
+      <button class="btn-reset" id="btn-reset">🔄 Iniciar próxima turma</button>
+    </div>
+    <div class="h-dica no-print">Ao salvar em PDF, escolha <strong style="color:#fff">"Salvar como PDF"</strong> no destino e marque <strong style="color:#fff">"Gráficos de plano de fundo"</strong> para manter as cores.</div>
+  </div>
+
+  <div class="conteudo" id="conteudo">Carregando dados...</div>
+</div>
+
+<script>
+// ── CONFIGURAÇÃO ─────────────────────────────────────────────────
+const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
+const RH_SENHA = "pdi2026rh"; // troque aqui se quiser outra senha
+
+const QUIZ_SABOTADORES_EMOJI = {
+  "Juiz":"⚖️","Prestativo":"🤝","Hiper-realizador":"🏆","Vítima":"😔",
+  "Hipervigilante":"👁️","Inquieto":"🌪️","Controlador":"🎮","Evitador":"🙈","Estagnado":"🐌",
+};
+
+let refreshTimer = null;
+
+async function buscarDados(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/pdi_ranking?select=*&order=pontos_total.desc&limit=200`,
+      { headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}` } }
+    );
+    if(!res.ok) return [];
+    return await res.json();
+  }catch(e){ return []; }
+}
+
+function media(arr){
+  return arr.length ? (arr.reduce((s,x)=>s+x,0)/arr.length).toFixed(1) : "–";
+}
+function contar(arr, key){
+  return arr.reduce((acc,d)=>{ const v=d[key]; if(v) acc[v]=(acc[v]||0)+1; return acc; }, {});
+}
+function topN(obj, n){
+  return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str ?? "";
+  return d.innerHTML;
+}
+
+// ── BLOCOS DE PARECER (análise de alto nível, não-diagnóstica) ────
+// sinal: "atencao" | "positivo" | "neutro"
+function blocoParecer(sinal, tituloSinal, orgTxt, indivTxt, investigarTxt, disclaimer){
+  const tagClasse = sinal;
+  const tagIcone = sinal==="atencao" ? "⚠️" : sinal==="positivo" ? "✅" : "ℹ️";
+  return `
+    <div class="parecer">
+      <span class="parecer-tag ${tagClasse}">${tagIcone} ${tituloSinal}</span>
+      <div class="parecer-grid">
+        <div class="parecer-bloco"><b>Pode ser da organização</b>${orgTxt}</div>
+        <div class="parecer-bloco"><b>Pode ser da pessoa</b>${indivTxt}</div>
+        <div class="parecer-bloco"><b>Vale investigar</b>${investigarTxt}</div>
+      </div>
+      ${disclaimer ? `<div class="parecer-disclaimer">${disclaimer}</div>` : ""}
+    </div>`;
+}
+
+function render(dados){
+  const app = document.getElementById("app");
+  const conteudo = document.getElementById("conteudo");
+  app.style.display = "block";
+
+  document.getElementById("contagem-topo").textContent = `${dados.length} participantes · Atualização a cada 30s`;
+  document.getElementById("contagem-topo-print").textContent = `${dados.length} participantes · Relatório gerado em ${new Date().toLocaleDateString("pt-BR")}`;
+
+  if(dados.length===0){
+    conteudo.innerHTML = `<div style="text-align:center;color:var(--text-light);padding:60px 20px;">Nenhum participante concluiu o PDI ainda. Os dados aparecem aqui assim que as primeiras pessoas baixarem o PowerPoint.</div>`;
+    return;
+  }
+
+  const n = Math.max(dados.length, 1);
+  const mediaVontade = media(dados.map(d=>d.nivel_vontade||0));
+  const mediaCorpo = media(dados.map(d=>d.energia_corpo||0));
+  const mediaMente = media(dados.map(d=>d.energia_mente||0));
+  const mediaEmocao = media(dados.map(d=>d.energia_emocao||0));
+  const mediaPts = media(dados.map(d=>d.pontos_total||0));
+  const mediaQualidade = media(dados.map(d=>d.pontos_qualidade||0));
+  const mediaCompletude = media(dados.map(d=>d.pontos_completude||0));
+
+  const sabCount = contar(dados, "sabotador");
+  const cargoCount = contar(dados, "cargo_pretendido");
+  const gapCount = {}; dados.forEach(d=>(d.gaps_habilidades||"").split(",").map(g=>g.trim()).filter(Boolean).forEach(g=>{gapCount[g]=(gapCount[g]||0)+1;}));
+  const areaCount = {}; dados.forEach(d=>(d.areas_baixas_roda||"").split(",").map(a=>a.trim()).filter(Boolean).forEach(a=>{areaCount[a]=(areaCount[a]||0)+1;}));
+
+  const barHtml = (v, max, cor) => `
+    <div class="item-bar-wrap">
+      <div class="item-bar-bg"><div class="item-bar-fill" style="width:${Math.min(100,(v/max)*100)}%;background:${cor}"></div></div>
+      <span class="item-pct" style="color:${cor}">${Math.round((v/max)*100)}%</span>
+    </div>`;
+
+  // ── Visão Geral ──
+  let html = `<div class="secao-label">Visão Geral</div><div class="grid2">`;
+  [
+    {l:"Participantes", v:dados.length, ic:"👥", cor:"var(--teal)"},
+    {l:"Média de Pontos", v:mediaPts, ic:"🏆", cor:"var(--amber)"},
+    {l:"Média de Vontade", v:`${mediaVontade}/10`, ic:"🔥", cor:"var(--green)"},
+    {l:"Média de Qualidade", v:mediaQualidade, ic:"✨", cor:"var(--purple)"},
+  ].forEach(m=>{
+    html += `<div class="kpi" style="border-left:4px solid ${m.cor}"><div class="kpi-ic">${m.ic}</div><div class="kpi-val" style="color:${m.cor}">${m.v}</div><div class="kpi-lbl">${m.l}</div></div>`;
+  });
+  html += `</div>`;
+
+  // ── Energia ──
+  const mediaEnergiaGeral = (Number(mediaCorpo)+Number(mediaMente)+Number(mediaEmocao))/3;
+  html += `<div class="card"><div class="card-title">🌡️ Como chegaram ao treinamento</div>`;
+  [
+    {l:"💪 Corpo", v:mediaCorpo, c:"var(--green)"},
+    {l:"🧠 Mente", v:mediaMente, c:"var(--teal)"},
+    {l:"❤️ Emoção", v:mediaEmocao, c:"var(--purple)"},
+  ].forEach(e=>{
+    html += `
+      <div class="energia-row">
+        <div class="energia-top"><span class="energia-lbl">${e.l}</span><span class="energia-val" style="color:${e.c}">${e.v}/5</span></div>
+        <div class="item-bar-bg"><div class="item-bar-fill" style="width:${Math.min(100,(Number(e.v)/5)*100)}%;background:${e.c}"></div></div>
+      </div>`;
+  });
+  if(mediaEnergiaGeral < 3){
+    html += blocoParecer("atencao", "Energia média abaixo do esperado",
+      "Pode refletir carga de trabalho recente, prazos apertados, poucas pausas reais ao longo do dia, ou um momento de pico de demanda na área.",
+      "Também pode refletir rotina de sono, hábitos de autocuidado, ou um momento pessoal específico de cada participante, sem relação com o trabalho.",
+      "Vale cruzar esse sinal com indicadores que a empresa já acompanha (horas extras, absenteísmo recente) antes de tirar conclusões, e conversar com as lideranças sobre carga de trabalho do período — sem citar nomes.",
+      "Este número é uma média do grupo em um único momento (o dia do treinamento) — não é um diagnóstico e não deve ser usado para avaliar pessoas específicas.");
+  } else {
+    html += blocoParecer("positivo", "Energia média dentro do esperado",
+      "Sugere que a carga de trabalho recente não está, em média, no limite para este grupo.",
+      "As pessoas parecem estar em um momento razoável de disposição física e emocional.",
+      "Mesmo com média boa, vale observar se há alguém isoladamente muito abaixo da média — isso pode não aparecer em números agregados.",
+      "Este número é uma média do grupo em um único momento (o dia do treinamento) — não é um diagnóstico.");
+  }
+  html += `</div>`;
+
+  // ── Sabotadores ──
+  const totalSab = Object.values(sabCount).reduce((a,b)=>a+b,0) || 1;
+  const topSab = topN(sabCount, 3);
+  const dominancia = topSab.length ? topSab[0][1]/totalSab : 0;
+  html += `<div class="card"><div class="card-title">🛡️ Sabotadores mais comuns</div>`;
+  topSab.forEach(([sab,cnt])=>{
+    html += `
+      <div class="item-row">
+        <span class="item-lbl">${QUIZ_SABOTADORES_EMOJI[sab]||"🛡️"} ${escapeHtml(sab)}</span>
+        ${barHtml(cnt, n, "var(--amber)")}
+      </div>`;
+  });
+  if(dominancia > 0.4){
+    html += blocoParecer("atencao", `"${topSab[0][0]}" aparece em mais de 40% do grupo`,
+      "Um sabotador muito concentrado no grupo (não distribuído) pode ser reforçado pelo ambiente — por exemplo, cultura de alta pressão por performance favorece o Hiper-realizador; falta de clareza de prioridades favorece o Inquieto; pouca segurança psicológica favorece o Prestativo e o Evitador de conflito.",
+      "Sabotadores também têm origem em padrões pessoais formados ao longo da vida, muitas vezes bem anteriores à empresa atual.",
+      "Se esse padrão se concentra em um time específico, pode valer uma conversa (não avaliativa) com a liderança daquele time sobre estilo de gestão e clima. Evite atribuir a causa só a um dos dois lados.",
+      null);
+  } else {
+    html += blocoParecer("neutro", "Distribuição de sabotadores dentro do esperado",
+      "Grupos saudáveis costumam ter sabotadores variados — não é sinal de alerta por si só.",
+      "Cada padrão listado é individual e comum na população em geral.",
+      "Nenhuma ação específica necessária aqui além de manter o tema vivo em conversas de desenvolvimento.",
+      null);
+  }
+  html += `</div>`;
+
+  // ── Gaps de habilidades ──
+  const topGaps = topN(gapCount, 5);
+  const maiorGap = topGaps.length ? topGaps[0][1]/n : 0;
+  html += `<div class="card"><div class="card-title">💡 Principais gaps de habilidades</div>`;
+  topGaps.forEach(([gap,cnt])=>{
+    html += `
+      <div class="item-row">
+        <span class="item-lbl">${escapeHtml(gap)}</span>
+        ${barHtml(cnt, n, "var(--teal)")}
+      </div>`;
+  });
+  if(maiorGap > 0.4){
+    html += blocoParecer("atencao", "Um gap aparece em boa parte do grupo — pode ser sistêmico",
+      "Quando o mesmo gap se repete em muita gente, geralmente é sinal de lacuna de capacitação oferecida pela empresa, ou mudança nas exigências do cargo sem treinamento correspondente.",
+      "Também pode refletir autoavaliação — é comum subestimar habilidades pouco exercitadas no dia a dia, mesmo quando existem.",
+      "Cheque se já existe capacitação disponível para esse gap. Se existe e pouca gente participou, pode ser problema de divulgação ou de tempo disponível, não de oferta.",
+      null);
+  } else {
+    html += blocoParecer("neutro", "Gaps distribuídos, sem concentração forte",
+      "Não há um gap dominante que sugira uma lacuna de treinamento estrutural.",
+      "As necessidades de desenvolvimento parecem mais individuais do que coletivas.",
+      "Trilhas de desenvolvimento individual (como o próprio PDI) tendem a ser mais eficazes aqui do que um treinamento único para todo o grupo.",
+      null);
+  }
+  html += `</div>`;
+
+  // ── Roda da Vida ──
+  html += `<div class="card"><div class="card-title">⚖️ Áreas da vida com menor satisfação</div><div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+  topN(areaCount, 4).forEach(([area,cnt])=>{
+    html += `<span class="chip" style="background:#EA580C22;color:var(--orange)">${escapeHtml(area)} (${Math.round((cnt/n)*100)}%)</span>`;
+  });
+  html += `</div>`;
+  html += blocoParecer("neutro", "Dado sensível — trate como termômetro, não como diagnóstico",
+    "Fatores como carga horária, cultura de disponibilidade constante e falta de flexibilidade podem influenciar áreas como saúde, lazer ou relacionamentos.",
+    "Também reflete fortemente fase de vida e prioridades pessoais atuais, sem nenhuma relação com a empresa.",
+    "Use esse dado só como leitura agregada de clima geral. Não é indicado usá-lo para decisões sobre pessoas específicas — a Roda da Vida é uma ferramenta de autoconhecimento, não de avaliação de desempenho.",
+    null);
+  html += `</div>`;
+
+  // ── Cargos pretendidos ──
+  html += `<div class="card"><div class="card-title">📈 Cargos pretendidos (planejamento de sucessão)</div><div style="display:flex;gap:8px;flex-wrap:wrap;">`;
+  Object.entries(cargoCount).forEach(([cargo,cnt])=>{
+    html += `
+      <div style="flex:1;min-width:80px;text-align:center;background:var(--slate);border-radius:10px;padding:10px 6px;">
+        <div style="font-size:20px;font-weight:800;color:var(--navy)">${cnt}</div>
+        <div style="font-size:10px;color:var(--text-mid);margin-top:2px;">${escapeHtml(cargo)}</div>
+      </div>`;
+  });
+  html += `</div>`;
+  html += blocoParecer("neutro", "Use como ponto de partida para conversas, não como promessa",
+    "Esse mapa ajuda a antecipar interesses de carreira antes das avaliações formais, apoiando conversas de sucessão com mais contexto.",
+    "É uma intenção declarada por cada pessoa no momento do treinamento, não uma avaliação de prontidão real para o cargo.",
+    "Cruze com avaliações de desempenho e conversas com a liderança direta antes de qualquer decisão — este dado sozinho não substitui esse processo.",
+    null);
+  html += `</div>`;
+
+  // ── Índice de Clima ──
+  html += `<div class="card"><div class="card-title">🗺️ Índice de Clima de Desenvolvimento</div><div class="grid2">`;
+  [
+    {l:"Média Vontade", v:`${mediaVontade}/10`, c:"var(--amber)"},
+    {l:"Média Completude", v:mediaCompletude, c:"var(--teal)"},
+    {l:"Concluíram", v:`${dados.length}`, c:"var(--green)"},
+    {l:"Média Qualidade", v:mediaQualidade, c:"var(--purple)"},
+  ].forEach(m=>{
+    html += `<div style="background:var(--slate);border-radius:10px;padding:10px 12px;"><div style="font-size:9px;color:var(--text-mid);margin-bottom:4px;">${m.l}</div><div style="font-size:20px;font-weight:800;color:${m.c}">${m.v}</div></div>`;
+  });
+  html += `</div></div>`;
+
+  html += `
+    <div class="rodape">
+      🔒 Relatório anônimo · PDI na Prática<br>
+      <span class="no-print">Atualização automática a cada 30s</span>
+      <span class="so-print">Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
+    </div>`;
+
+  conteudo.innerHTML = html;
+}
+
+async function carregar(){
+  const dados = await buscarDados();
+  render(dados);
+  return dados;
+}
+
+async function entrar(){
+  const senha = document.getElementById("gate-senha").value;
+  const erroEl = document.getElementById("gate-erro");
+  if(senha !== RH_SENHA){ erroEl.textContent = "Senha incorreta."; return; }
+  erroEl.textContent = "";
+  document.getElementById("gate").style.display = "none";
+  await carregar();
+  refreshTimer = setInterval(carregar, 30000);
+}
+
+document.getElementById("gate-btn").addEventListener("click", entrar);
+document.getElementById("gate-senha").addEventListener("keydown", e=>{ if(e.key==="Enter") entrar(); });
+
+document.getElementById("btn-pdf").addEventListener("click", ()=>{
+  clearInterval(refreshTimer);
+  window.print();
+  refreshTimer = setInterval(carregar, 30000);
+});
+
+document.getElementById("btn-reset").addEventListener("click", async ()=>{
+  const dadosAtuais = await buscarDados();
+  if(!confirm(`Isso vai apagar os dados de ${dadosAtuais.length} participante(s) do ranking e do dashboard, para começar a próxima turma do zero.\n\nJá salvou o PDF desta turma? Essa ação não pode ser desfeita.\n\nConfirma que quer limpar?`)) return;
+  const btn = document.getElementById("btn-reset");
+  btn.disabled = true; btn.textContent = "⏳ Limpando...";
+  try{
+    const antes = dadosAtuais.length;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_ranking?id=not.is.null`, {
+      method: "DELETE",
+      headers: { "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}`, "Prefer":"return=representation" }
+    });
+    if(!res.ok){
+      alert("Não consegui limpar os dados. Verifique a conexão e tente novamente.");
+    } else {
+      const apagados = await res.json().catch(()=>[]);
+      const qtd = Array.isArray(apagados) ? apagados.length : 0;
+      if(qtd===0 && antes>0){
+        alert('O banco recusou a exclusão.\n\nFalta a permissão de DELETE na tabela. Abra o Supabase → SQL Editor e rode:\n\nCREATE POLICY "Exclusao publica" ON pdi_ranking FOR DELETE USING (true);\n\nDepois tente de novo por aqui.');
+      } else {
+        await carregar();
+        alert(`Pronto! ${qtd} registro(s) removido(s). Pode começar a próxima turma.`);
+      }
+    }
+  }catch(e){ alert("Erro ao limpar os dados. Tente novamente."); }
+  btn.disabled = false; btn.textContent = "🔄 Iniciar próxima turma";
+});
+</script>
+</body>
+</html>
