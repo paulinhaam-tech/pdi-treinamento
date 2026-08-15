@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Senha da Turma · PDI na Prática</title>
+<style>
+  :root{
+    --navy:#0F1D3A; --navy-mid:#1A3160; --navy-light:#234080;
+    --amber:#F5A623; --slate-deep:#C5D0E6; --white:#FFFFFF;
+    --green:#1DB87A; --red:#E05252;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;min-height:100vh;background:var(--navy);}
+  .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .gate-box{background:var(--navy-mid);border-radius:16px;padding:32px;width:320px;text-align:center;}
+  .gate-emoji{font-size:36px;margin-bottom:12px;}
+  .gate-title{font-weight:800;font-size:18px;color:var(--white);margin-bottom:8px;}
+  .gate-sub{font-size:12px;color:var(--slate-deep);margin-bottom:20px;}
+  .gate-input,.form-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--navy-light);background:var(--navy);color:var(--white);font-size:15px;outline:none;font-family:inherit;margin-bottom:12px;text-align:center;letterSpacing:1px;}
+  .gate-btn,.form-btn{width:100%;padding:12px;background:var(--amber);color:var(--navy);border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;}
+  .gate-erro{color:#FF8A8A;font-size:11px;margin-top:10px;min-height:14px;}
+
+  .wrap{max-width:420px;margin:0 auto;padding:24px 18px 60px;}
+  .header{text-align:center;margin-bottom:24px;}
+  .kicker{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:6px;}
+  .title{font-size:22px;font-weight:800;color:#fff;}
+
+  .card{background:var(--navy-mid);border-radius:14px;padding:20px;margin-bottom:16px;}
+  .lbl{font-size:10px;color:var(--slate-deep);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+  .senha-atual{font-size:24px;font-weight:800;color:var(--amber);letter-spacing:2px;text-align:center;padding:14px 0;}
+
+  .aviso{font-size:11px;color:#FF8A8A;background:#E0525218;border-radius:9px;padding:10px 12px;margin-top:8px;line-height:1.6;display:none;}
+  .aviso.show{display:block;}
+  .sucesso{font-size:11px;color:var(--green);background:#1DB87A18;border-radius:9px;padding:10px 12px;margin-top:8px;line-height:1.6;display:none;}
+  .sucesso.show{display:block;}
+
+  .rodape{text-align:center;color:var(--slate-deep);font-size:10.5px;margin-top:20px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-emoji">🔑</div>
+    <div class="gate-title">Senha da Turma</div>
+    <div class="gate-sub">Acesso restrito — Facilitadora</div>
+    <input id="gate-senha" type="password" class="gate-input" placeholder="Sua senha de facilitadora">
+    <button id="gate-btn" class="gate-btn">Entrar</button>
+    <div id="gate-erro" class="gate-erro"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="wrap">
+    <div class="header">
+      <div class="kicker">PDI na Prática</div>
+      <div class="title">🔑 Senha da Turma</div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Senha em uso agora</div>
+      <div class="senha-atual" id="senha-atual">carregando...</div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Definir nova senha</div>
+      <input id="nova-senha" class="form-input" placeholder="Ex: TURMA-AGOSTO" autocapitalize="characters">
+      <button id="btn-trocar" class="form-btn">Trocar senha agora</button>
+      <div id="aviso-erro" class="aviso"></div>
+      <div id="aviso-sucesso" class="sucesso"></div>
+    </div>
+
+    <div class="rodape">
+      Assim que você troca a senha, quem tinha a senha antiga não consegue mais entrar no app —
+      só quem tiver a senha nova a partir de agora. O código de teste <b>DEMO-2026</b> continua
+      funcionando sempre, independente disso, só para você testar o app quando quiser.
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
+const RH_SENHA = "pdi2026rh"; // mesma senha do dashboard RH / controle de ritmo
+
+async function buscarSenhaAtual(){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_senhas?id=eq.1&select=senha,expira_em`,
+      { headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}` } });
+    if(!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0] || null;
+  }catch(e){ return null; }
+}
+
+async function trocarSenha(nova){
+  const expira = new Date();
+  expira.setDate(expira.getDate()+180); // válida por ~6 meses, até a próxima troca
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_senhas?id=eq.1`, {
+    method:"PATCH",
+    headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}`, "Content-Type":"application/json", "Prefer":"return=representation" },
+    body: JSON.stringify({ senha: nova.toUpperCase(), expira_em: expira.toISOString(), atualizada_em: new Date().toISOString() })
+  });
+  if(res.ok){
+    const rows = await res.json().catch(()=>[]);
+    if(Array.isArray(rows) && rows.length>0) return true;
+    // Nenhuma linha existia ainda para atualizar — cria pela primeira vez
+    const res2 = await fetch(`${SUPABASE_URL}/rest/v1/pdi_senhas`, {
+      method:"POST",
+      headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}`, "Content-Type":"application/json", "Prefer":"return=representation" },
+      body: JSON.stringify({ id:1, senha: nova.toUpperCase(), expira_em: expira.toISOString() })
+    });
+    return res2.ok;
+  }
+  return false;
+}
+
+async function carregar(){
+  const atual = await buscarSenhaAtual();
+  const el = document.getElementById("senha-atual");
+  if(!atual){ el.textContent = "nenhuma definida ainda"; return; }
+  el.textContent = atual.senha;
+}
+
+async function entrar(){
+  const senha = document.getElementById("gate-senha").value;
+  const erroEl = document.getElementById("gate-erro");
+  if(senha !== RH_SENHA){ erroEl.textContent = "Senha incorreta."; return; }
+  erroEl.textContent = "";
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  await carregar();
+}
+
+document.getElementById("gate-btn").addEventListener("click", entrar);
+document.getElementById("gate-senha").addEventListener("keydown", e=>{ if(e.key==="Enter") entrar(); });
+
+document.getElementById("btn-trocar").addEventListener("click", async ()=>{
+  const input = document.getElementById("nova-senha");
+  const avisoErro = document.getElementById("aviso-erro");
+  const avisoSucesso = document.getElementById("aviso-sucesso");
+  avisoErro.classList.remove("show"); avisoSucesso.classList.remove("show");
+  const nova = input.value.trim();
+  if(!nova){ avisoErro.textContent = "Digite uma senha."; avisoErro.classList.add("show"); return; }
+  if(!confirm(`Trocar a senha da turma para "${nova.toUpperCase()}"?\n\nQuem tinha a senha antiga não vai mais conseguir entrar.`)) return;
+  const btn = document.getElementById("btn-trocar");
+  btn.disabled = true; btn.textContent = "⏳ Trocando...";
+  const ok = await trocarSenha(nova);
+  btn.disabled = false; btn.textContent = "Trocar senha agora";
+  if(ok){
+    avisoSucesso.textContent = "✅ Senha trocada! A partir de agora, só quem tiver essa nova senha entra no app.";
+    avisoSucesso.classList.add("show");
+    input.value = "";
+    await carregar();
+  } else {
+    avisoErro.textContent = "Não consegui trocar a senha. Verifique sua conexão e tente de novo.";
+    avisoErro.classList.add("show");
+  }
+});
+</script>
+</body>
+</html>
