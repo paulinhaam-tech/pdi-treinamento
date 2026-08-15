@@ -89,18 +89,22 @@ Regras rígidas:
     });
 
     if (!resposta.ok) {
-      return res.status(200).json({ ok: false, recomendacao: null, motivo: "api" });
+      const corpoErro = await resposta.text().catch(() => "(sem corpo)");
+      console.error("Erro da Anthropic:", resposta.status, corpoErro);
+      return res.status(200).json({ ok: false, recomendacao: null, motivo: "api", detalhe: `status ${resposta.status}: ${corpoErro}` });
     }
 
     const dados = await resposta.json();
     const texto = dados?.content?.find((b) => b.type === "text")?.text || null;
 
     if (!texto) {
+      console.error("Resposta da Anthropic sem texto:", JSON.stringify(dados));
       return res.status(200).json({ ok: false, recomendacao: null, motivo: "vazio" });
     }
 
     return res.status(200).json({ ok: true, recomendacao: texto });
   } catch (e) {
-    return res.status(200).json({ ok: false, recomendacao: null, motivo: "excecao" });
+    console.error("Exceção na função iana:", e?.message, e?.stack);
+    return res.status(200).json({ ok: false, recomendacao: null, motivo: "excecao", detalhe: e?.message });
   }
 }
