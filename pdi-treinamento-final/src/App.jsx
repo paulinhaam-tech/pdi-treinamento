@@ -1064,7 +1064,10 @@ function TelaConclusao({d,set}){
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:2.35,fill:{color:WH},rectRadius:.1});
         sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x,y,w:3.627,h:.42,fill:{color:q.cor},rectRadius:.1});
         sl.addText(q.l,{x,y,w:3.627,h:.42,fontSize:8,bold:true,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:0});
-        sl.addText(q.itens.slice(0,5).map(v=>`• ${v}`).join("\n")||"–",{x:x+0.133,y:y+.48,w:3.36,h:1.8,fontSize:10,color:N,fontFace:"Calibri",valign:"top",margin:2});});
+        // Sem cortar itens: a fonte diminui conforme a pessoa marca mais chips + escreve "outros",
+        // pra tudo que ela preencheu aparecer no PowerPoint (antes, o 6º item em diante sumia sem aviso).
+        const itensFS = q.itens.length<=5?10:q.itens.length<=8?9:8;
+        sl.addText(q.itens.map(v=>`• ${v}`).join("\n")||"–",{x:x+0.133,y:y+.48,w:3.36,h:1.8,fontSize:itensFS,color:N,fontFace:"Calibri",valign:"top",margin:2,shrinkText:true});});
       // Habilidades radar (barras à direita)
       sl.addText("🎯  Habilidades do Futuro",{x:8,y:1.22,w:4.8,h:.38,fontSize:12,bold:true,color:N,fontFace:"Calibri",margin:0});
       HABILIDADES.forEach((h,i)=>{
