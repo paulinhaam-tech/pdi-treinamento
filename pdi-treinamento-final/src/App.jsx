@@ -1640,7 +1640,7 @@ export default function App(){
 
   function ir(p){
     // Ritmo guiado: se a facilitadora travou o avanço, impede pular além do liberado
-    if(etapaLiberada>0 && p>etapaLiberada-1){
+    if(etapaLiberada>0 && p>etapaLiberada){
       setAvisoBloqueio(true);
       setTimeout(()=>setAvisoBloqueio(false), 4000);
       return;
