@@ -164,13 +164,11 @@ function Chips({opcoes,selecionados,onToggle,cor}){
 
 // ── TELA SENHA ────────────────────────────────────────────────────
 
-// ── SUPABASE RANKING ────────────────────────────────────────────
-const RH_SENHA = "pdi2026rh";
-
 // ── ACESSO DOS PARTICIPANTES ──────────────────────────────────────
 // Último dia em que o app fica aberto para as pessoas preencherem (formato AAAA-MM-DD).
 // Depois dessa data o link mostra "treinamento encerrado" sozinho.
-// O ranking (?ranking=1) e o dashboard do RH (?rh=1) continuam funcionando sempre.
+// Ranking, Dashboard RH e Controle do Ritmo ficam em arquivos separados
+// (ranking.html, rh-dashboard.html, controle.html) e continuam funcionando sempre.
 // Deixe "" (vazio) para nunca expirar.
 const ACESSO_ATE = "";
 
@@ -234,14 +232,6 @@ async function dbSalvar(d, pts) {
     })
   });
   return res.ok;
-}
-async function dbRanking() {
-  if (!SUPABASE_URL.includes("supabase")) return [];
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/pdi_ranking?select=*&order=pontos_total.desc&limit=50`,
-    {headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}}
-  );
-  return res.ok ? res.json() : [];
 }
 
 // ── RITMO GUIADO (controle da facilitadora) ───────────────────────
@@ -1291,256 +1281,6 @@ function MsgMotivacional({etapa,onContinuar}){
 
 // ── APP PRINCIPAL ─────────────────────────────────────────────────
 
-function TelaRanking(){
-  const [ranking,setRanking]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const ref=useRef(null);
-  async function atualizar(){const data=await dbRanking();setRanking(data);setLoading(false);}
-  useEffect(()=>{atualizar();ref.current=setInterval(atualizar,10000);return()=>clearInterval(ref.current);},[]);
-  const medalhas=[{emoji:"🥇",cor:C.gold},{emoji:"🥈",cor:C.silver},{emoji:"🥉",cor:C.bronze}];
-  const top3=ranking.slice(0,3);const resto=ranking.slice(3);
-  return <div style={{minHeight:"100dvh",background:C.navy,padding:32,fontFamily:"'Inter',sans-serif"}}>
-    <style>{`@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}`}</style>
-    <div style={{textAlign:"center",marginBottom:32}}>
-      <div style={{fontSize:13,color:C.amber,fontWeight:700,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>🏆 Ranking ao Vivo · PDI na Prática</div>
-      <div style={{fontSize:36,fontWeight:800,color:C.white}}>Quem tem o PDI mais completo?</div>
-      <div style={{fontSize:11,color:C.slateDeep,marginTop:6}}>Atualização automática a cada 10 segundos</div>
-    </div>
-    {loading?<div style={{textAlign:"center",color:C.slateDeep,fontSize:20,padding:60}}>⏳ Carregando...</div>:
-    ranking.length===0?<div style={{textAlign:"center",color:C.slateDeep,fontSize:18,padding:60}}>Aguardando participantes finalizarem...</div>:(
-    <>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1.25fr 1fr",gap:20,marginBottom:32,alignItems:"end"}}>
-        {[top3[1],top3[0],top3[2]].map((p,vi)=>{
-          if(!p)return <div key={vi}/>;
-          const pos=vi===1?0:vi===0?1:2;const m=medalhas[pos];
-          return <div key={vi} style={{background:`linear-gradient(160deg,${C.navyMid},${C.navyLight})`,borderRadius:20,padding:"24px 20px",textAlign:"center",border:`3px solid ${m.cor}`,boxShadow:`0 0 30px ${m.cor}44`,minHeight:vi===1?"230px":"190px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",animation:vi===1?"pulse 2s infinite":"none"}}>
-            <div style={{fontSize:vi===1?56:42,marginBottom:4}}>{m.emoji}</div>
-            <div style={{fontSize:vi===1?22:18,fontWeight:800,color:C.white,marginBottom:8}}>{p.apelido||`Participante ${pos+1}`}</div>
-            <div style={{fontSize:vi===1?42:32,fontWeight:800,color:m.cor,lineHeight:1}}>{p.pontos_total}</div>
-            <div style={{fontSize:10,color:C.slateDeep,marginBottom:8}}>pontos</div>
-            <span style={{fontSize:9,background:`${m.cor}22`,color:m.cor,padding:"2px 8px",borderRadius:99,fontWeight:700}}>🔥 {p.nivel_vontade}/10</span>
-          </div>;
-        })}
-      </div>
-      {resto.length>0&&<div style={{background:C.navyMid,borderRadius:16,padding:20}}>
-        {resto.map((p,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:10,background:i%2===0?C.navy:C.navyLight,marginBottom:6}}>
-            <div style={{fontSize:16,fontWeight:800,color:C.slateDeep,width:30}}>{i+4}º</div>
-            <div style={{flex:1}}><div style={{fontWeight:700,color:C.white,fontSize:14}}>{p.apelido||`Participante ${i+4}`}</div></div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:800,color:C.amber}}>{p.pontos_total}</div><div style={{fontSize:9,color:C.slateDeep}}>pts</div></div>
-          </div>
-        ))}
-      </div>}
-      <div style={{textAlign:"center",marginTop:24,color:C.slateDeep,fontSize:11}}>{ranking.length} participante(s) · {new Date().toLocaleTimeString("pt-BR")}</div>
-    </>)}
-  </div>;
-}
-
-// ── DASHBOARD RH ──────────────────────────────────────────────────
-
-function DashboardRH(){
-  const [senha,setSenha]=useState("");
-  const [ok,setOk]=useState(false);
-  const [dados,setDados]=useState([]);
-  const [loading,setLoading]=useState(false);
-  const [limpando,setLimpando]=useState(false);
-  const ref=useRef(null);
-
-  async function carregar(){setLoading(true);const data=await dbRanking();setDados(data);setLoading(false);}
-  function entrar(){if(senha===RH_SENHA){setOk(true);carregar();ref.current=setInterval(carregar,30000);}else alert("Senha incorreta");}
-  useEffect(()=>()=>clearInterval(ref.current),[]);
-
-  function exportarPDF(){
-    if(dados.length===0){alert("Não há dados para exportar ainda.");return;}
-    // pausa a atualização automática para o relatório não mudar no meio da impressão
-    clearInterval(ref.current);
-    window.print();
-    ref.current=setInterval(carregar,30000);
-  }
-
-  async function limparTurma(){
-    if(!confirm(`Isso vai apagar os dados de ${dados.length} participante(s) do ranking e do dashboard, para começar a próxima turma do zero.\n\nJá salvou o PDF desta turma? Essa ação não pode ser desfeita.\n\nConfirma que quer limpar?`))return;
-    setLimpando(true);
-    try{
-      const antes=dados.length;
-      const res=await fetch(`${SUPABASE_URL}/rest/v1/pdi_ranking?id=not.is.null`,{
-        method:"DELETE",
-        headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=representation"}
-      });
-      if(!res.ok){
-        alert("Não consegui limpar os dados. Verifique a conexão e tente novamente.");
-      }else{
-        const apagados=await res.json().catch(()=>[]);
-        const qtd=Array.isArray(apagados)?apagados.length:0;
-        if(qtd===0&&antes>0){
-          alert("O banco recusou a exclusão.\n\nFalta a permissão de DELETE na tabela. Abra o Supabase → SQL Editor e rode:\n\nCREATE POLICY \"Exclusao publica\" ON pdi_ranking FOR DELETE USING (true);\n\nDepois tente de novo por aqui.");
-        }else{
-          await carregar();
-          alert(`Pronto! ${qtd} registro(s) removido(s). Pode começar a próxima turma.`);
-        }
-      }
-    }catch(e){alert("Erro ao limpar os dados. Tente novamente.");}
-    setLimpando(false);
-  }
-
-  if(!ok)return <div style={{minHeight:"100dvh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Inter',sans-serif"}}>
-    <div style={{background:C.navyMid,borderRadius:16,padding:32,width:320,textAlign:"center"}}>
-      <div style={{fontSize:36,marginBottom:12}}>📊</div>
-      <div style={{fontWeight:800,fontSize:18,color:C.white,marginBottom:8}}>Dashboard RH</div>
-      <div style={{fontSize:12,color:C.slateDeep,marginBottom:20}}>Acesso restrito — Facilitadora</div>
-      <input type="password" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()} placeholder="Senha de acesso"
-        style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${C.navyLight}`,background:C.navy,color:C.white,fontSize:14,outline:"none",fontFamily:"inherit",marginBottom:12}}/>
-      <button onClick={entrar} style={{width:"100%",padding:12,background:C.amber,color:C.navy,border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:"pointer"}}>Entrar</button>
-    </div>
-  </div>;
-
-  if(loading&&dados.length===0)return <div style={{minHeight:"100dvh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",color:C.slateDeep,fontSize:18,fontFamily:"'Inter',sans-serif"}}>Carregando dados...</div>;
-
-  const n=Math.max(dados.length,1);
-  const media=arr=>arr.length?( arr.reduce((s,x)=>s+x,0)/arr.length).toFixed(1):"–";
-  const mediaVontade=media(dados.map(d=>d.nivel_vontade||0));
-  const mediaCorpo=media(dados.map(d=>d.energia_corpo||0));
-  const mediaMente=media(dados.map(d=>d.energia_mente||0));
-  const mediaEmocao=media(dados.map(d=>d.energia_emocao||0));
-  const mediaPts=media(dados.map(d=>d.pontos_total||0));
-  const mediaQualidade=media(dados.map(d=>d.pontos_qualidade||0));
-  const mediaCompletude=media(dados.map(d=>d.pontos_completude||0));
-  const count=(arr,key)=>arr.reduce((acc,d)=>{const v=d[key];if(v)acc[v]=(acc[v]||0)+1;return acc;},{});
-  const topN=(obj,n)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
-  const sabCount=count(dados,"sabotador");
-  const cargoCount=count(dados,"cargo_pretendido");
-  const gapCount={}; dados.forEach(d=>(d.gaps_habilidades||"").split(",").map(g=>g.trim()).filter(Boolean).forEach(g=>{gapCount[g]=(gapCount[g]||0)+1;}));
-  const areaCount={}; dados.forEach(d=>(d.areas_baixas_roda||"").split(",").map(a=>a.trim()).filter(Boolean).forEach(a=>{areaCount[a]=(areaCount[a]||0)+1;}));
-
-  const card={background:C.white,borderRadius:14,padding:16,marginBottom:12,boxShadow:"0 2px 8px rgba(15,29,58,.07)"};
-  const bar=(v,max,cor)=><div style={{background:C.slateDeep,borderRadius:99,height:8,overflow:"hidden",flex:1}}>
-    <div style={{width:`${Math.min(100,(v/max)*100)}%`,height:"100%",background:cor,borderRadius:99}}/>
-  </div>;
-
-  return <div style={{fontFamily:"'Inter',sans-serif",minHeight:"100dvh",background:C.slate,color:C.text}}>
-    <style>{`
-      .so-print{display:none}
-      @media print{
-        @page{size:A4;margin:12mm}
-        html,body{background:#fff !important}
-        .no-print{display:none !important}
-        .so-print{display:block !important}
-        .pdi-conteudo > div{page-break-inside:avoid;break-inside:avoid}
-        *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
-      }
-    `}</style>
-    <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:"20px 20px 16px"}}>
-      <div style={{fontSize:8,color:C.slateDeep,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Dashboard RH — Dados Anônimos</div>
-      <div style={{fontSize:22,fontWeight:800,color:C.white,marginBottom:4}}>Relatório do Treinamento PDI</div>
-      <div style={{fontSize:11,color:C.slateDeep}} className="no-print">{dados.length} participantes · Atualização a cada 30s</div>
-      <div style={{fontSize:11,color:C.slateDeep}} className="so-print">{dados.length} participantes · Relatório gerado em {new Date().toLocaleDateString("pt-BR")}</div>
-      <div style={{marginTop:10,fontSize:10,color:C.amber,background:`${C.amber}18`,borderRadius:8,padding:"6px 10px",display:"inline-block"}}>🔒 Todos os dados são anônimos (LGPD)</div>
-      <div style={{display:"flex",gap:8,marginTop:14}} className="no-print">
-        <button onClick={exportarPDF} style={{flex:1,padding:"10px 12px",background:C.amber,color:C.navy,border:"none",borderRadius:10,fontWeight:800,fontSize:12,cursor:"pointer"}}>🖨️ Salvar relatório em PDF</button>
-        <button onClick={limparTurma} disabled={limpando} style={{flex:1,padding:"10px 12px",background:"transparent",color:C.white,border:`1.5px solid ${C.slateDeep}`,borderRadius:10,fontWeight:700,fontSize:12,cursor:limpando?"default":"pointer"}}>{limpando?"⏳ Limpando...":"🔄 Iniciar próxima turma"}</button>
-      </div>
-      <div style={{marginTop:8,fontSize:9,color:C.slateDeep}} className="no-print">Ao salvar em PDF, escolha <strong style={{color:C.white}}>“Salvar como PDF”</strong> no destino e marque <strong style={{color:C.white}}>“Gráficos de plano de fundo”</strong> para manter as cores.</div>
-    </div>
-    <div style={{padding:14}} className="pdi-conteudo">
-
-      {/* Visão Geral */}
-      <div style={{fontWeight:700,fontSize:11,color:C.textMid,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Visão Geral</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        {[{l:"Participantes",v:dados.length,ic:"👥",cor:C.teal},{l:"Média de Pontos",v:mediaPts,ic:"🏆",cor:C.amber},{l:"Média de Vontade",v:`${mediaVontade}/10`,ic:"🔥",cor:C.green},{l:"Média de Qualidade",v:mediaQualidade,ic:"✨",cor:C.purple}].map(m=>(
-          <div key={m.l} style={{...card,borderLeft:`4px solid ${m.cor}`,margin:0}}>
-            <div style={{fontSize:18,marginBottom:4}}>{m.ic}</div>
-            <div style={{fontSize:24,fontWeight:800,color:m.cor}}>{m.v}</div>
-            <div style={{fontSize:10,color:C.textMid}}>{m.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Energia */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🌡️ Como chegaram ao treinamento</div>
-        {[{l:"💪 Corpo",v:mediaCorpo,c:C.green},{l:"🧠 Mente",v:mediaMente,c:C.teal},{l:"❤️ Emoção",v:mediaEmocao,c:C.purple}].map(e=>(
-          <div key={e.l} style={{marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:12,fontWeight:600}}>{e.l}</span><span style={{fontSize:14,fontWeight:800,color:e.c}}>{e.v}/5</span></div>
-            <PBar value={Number(e.v)} max={5} cor={e.c} h={8}/>
-          </div>
-        ))}
-      </div>
-
-      {/* Sabotadores */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>🛡️ Sabotadores mais comuns</div>
-        {topN(sabCount,3).map(([sab,cnt])=>(
-          <div key={sab} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.slate}`}}>
-            <span style={{fontSize:11,fontWeight:600,flex:1}}>{QUIZ_SABOTADORES.find(s=>s.sab===sab)?.emoji} {sab}</span>
-            <div style={{display:"flex",alignItems:"center",gap:8,width:120}}>
-              {bar(cnt,n,C.amber)}
-              <span style={{fontSize:12,fontWeight:700,color:C.amber,minWidth:32}}>{Math.round((cnt/n)*100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Gaps */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:8}}>💡 Principais gaps de habilidades</div>
-        <div style={{fontSize:11,color:C.textMid,marginBottom:12,background:`${C.teal}15`,borderRadius:8,padding:"8px 10px"}}>
-          💡 <strong>Sugestão para o RH:</strong> Considere capacitações nestas áreas.
-        </div>
-        {topN(gapCount,5).map(([gap,cnt])=>(
-          <div key={gap} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.slate}`}}>
-            <span style={{fontSize:11,flex:1}}>{gap}</span>
-            <div style={{display:"flex",alignItems:"center",gap:8,width:100}}>
-              {bar(cnt,n,C.teal)}
-              <span style={{fontSize:12,fontWeight:700,color:C.teal,minWidth:32}}>{Math.round((cnt/n)*100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Roda da Vida */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>⚖️ Áreas da vida com menor satisfação</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-          {topN(areaCount,4).map(([area,cnt])=>(
-            <span key={area} style={{fontSize:10,fontWeight:700,background:`${C.orange}22`,color:C.orange,padding:"4px 12px",borderRadius:99}}>{area} ({Math.round((cnt/n)*100)}%)</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Cargos */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:12}}>📈 Cargos pretendidos (planejamento de sucessão)</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {Object.entries(cargoCount).map(([cargo,cnt])=>(
-            <div key={cargo} style={{flex:1,textAlign:"center",background:C.slate,borderRadius:10,padding:"10px 6px"}}>
-              <div style={{fontSize:20,fontWeight:800,color:C.navy}}>{cnt}</div>
-              <div style={{fontSize:10,color:C.textMid,marginTop:2}}>{cargo}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Mapa de Talentos */}
-      <div style={card}>
-        <div style={{fontWeight:700,fontSize:13,color:C.navy,marginBottom:8}}>🗺️ Índice de Clima de Desenvolvimento</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {[{l:"Média Vontade",v:`${mediaVontade}/10`,c:C.amber},{l:"Média Completude",v:mediaCompletude,c:C.teal},{l:"Concluíram",v:`${dados.length}`,c:C.green},{l:"Média Qualidade",v:mediaQualidade,c:C.purple}].map(m=>(
-            <div key={m.l} style={{background:C.slate,borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,color:C.textMid,marginBottom:4}}>{m.l}</div>
-              <div style={{fontSize:20,fontWeight:800,color:m.c}}>{m.v}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:C.textLight}}>
-        🔒 Relatório anônimo · PDI na Prática<br/>
-        <span className="no-print">Atualização automática a cada 30s</span>
-        <span className="so-print">Gerado em {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span>
-      </div>
-    </div>
-  </div>;
-}
 
 
 function TelaRevisao(){
@@ -1587,8 +1327,6 @@ function TelaEncerrado(){
 
 export default function App(){
   const qs=typeof window!=="undefined"?window.location.search:"";
-  if(qs.includes("ranking=1"))return <TelaRanking/>;
-  if(qs.includes("rh=1"))return <DashboardRH/>;
   if(qs.includes("revisao=1"))return <TelaRevisao/>;
   // ?admin=1 sempre ignora o encerramento — use esse link pra continuar
   // acessando o app mesmo depois de travar o acesso dos participantes.
