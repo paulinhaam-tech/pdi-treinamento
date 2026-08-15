@@ -884,7 +884,7 @@ function TelaConclusao({d,set}){
           legado:d.objetivos?.legado,
           cargoShortText:d.objetivos?.cargoShortText, cargoMidText:d.objetivos?.cargoMidText, cargoLongText:d.objetivos?.cargoLongText,
           realidade:d.objetivos?.realidade,
-          forcas:d.swot?.forcas, fraquezas:d.swot?.fraquezas, estrategia:d.swot?.estrategia,
+          forcas:d.swot?.forcas, fraquezas:d.swot?.fraquezas, oportunidades:d.swot?.oportunidades, ameacas:d.swot?.ameacas, estrategia:d.swot?.estrategia,
           habilidades:d.habilidades, rodaVida:d.rodaVida,
           sabotadorPrincipal:d.sabotadorPrincipal, sabMeta:d.sabMeta,
           plano30:d.plano30?.oq?`${d.plano30.oq} (resultado esperado: ${d.plano30.resultado||"–"})`:"",
@@ -894,7 +894,7 @@ function TelaConclusao({d,set}){
         const res=await fetch("/api/iana",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
         const j=await res.json();
         if(!ativo)return;
-        if(j.ok && j.recomendacao){ setIanaTexto(j.recomendacao); setIanaStatus("ok"); set(prev=>({...prev,_ianaTexto:j.recomendacao})); }
+        if(j.ok && j.recomendacao){ setIanaTexto(j.recomendacao); setIanaStatus("ok"); set(prev=>({...prev,_ianaTexto:j.recomendacao,_iana5w2h:j.cincoWDoisH||null})); }
         else setIanaStatus("erro");
       }catch(e){ if(ativo) setIanaStatus("erro"); }
     }
@@ -1200,18 +1200,20 @@ function TelaConclusao({d,set}){
       sl.addText("Método 5W2H — Plano para até 4 ações",{x:.6,y:.38,w:10.667,h:.55,fontSize:18,bold:true,color:WH,fontFace:"Calibri",margin:0});
       // Cabeçalho colunas
       const colW=2.45;
+      const temIana5w2h=!!d._iana5w2h;
       ["Ação 1","Ação 2","Ação 3","Ação 4"].forEach((ac,i)=>{
-        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fill:{color:NM},rectRadius:.06});
-        sl.addText(ac,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fontSize:11,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
+        const label=(i===0&&temIana5w2h)?"Ação 1 🤖":ac;
+        sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fill:{color:i===0&&temIana5w2h?"7C3AED":NM},rectRadius:.06});
+        sl.addText(label,{x:3+i*colW,y:1.15,w:colW-0.107,h:.42,fontSize:11,bold:true,color:AM,align:"center",valign:"middle",fontFace:"Calibri",margin:0});});
       // Linhas 5W2H
       const rows=[
-        {l:"O QUÊ?",sl:"Qual ação?",cor:TL},
-        {l:"POR QUÊ?",sl:"Por que importa?",cor:AM},
-        {l:"ONDE?",sl:"Onde será feito?",cor:PU},
-        {l:"QUANDO?",sl:"Prazo / data",cor:GR},
-        {l:"QUEM?",sl:"Responsável / apoio",cor:OR},
-        {l:"COMO?",sl:"Como executar?",cor:"0891B2"},
-        {l:"QUANTO?",sl:"Custo / recursos",cor:PI},
+        {l:"O QUÊ?",sl:"Qual ação?",cor:TL,k:"oQue"},
+        {l:"POR QUÊ?",sl:"Por que importa?",cor:AM,k:"porQue"},
+        {l:"ONDE?",sl:"Onde será feito?",cor:PU,k:"onde"},
+        {l:"QUANDO?",sl:"Prazo / data",cor:GR,k:"quando"},
+        {l:"QUEM?",sl:"Responsável / apoio",cor:OR,k:"quem"},
+        {l:"COMO?",sl:"Como executar?",cor:"0891B2",k:"como"},
+        {l:"QUANTO?",sl:"Custo / recursos",cor:PI,k:"quanto"},
       ];
       rows.forEach((row,ri)=>{
         const y=1.65+ri*.76;
@@ -1220,7 +1222,12 @@ function TelaConclusao({d,set}){
         sl.addText(row.sl,{x:.25,y:y+.36,w:2.56,h:.3,fontSize:8,color:WH,align:"center",italic:true,fontFace:"Calibri",margin:0});
         for(let ci=0;ci<4;ci++){
           sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:3+ci*colW,y,w:colW-0.107,h:.68,fill:{color:ri%2===0?NM:NL},rectRadius:.06});
-          sl.addText("✏️",{x:3.133+ci*colW,y:y+.18,w:colW-0.373,h:.32,fontSize:13,align:"center",fontFace:"Calibri",margin:0});}});}
+          if(ci===0&&temIana5w2h){
+            sl.addText(d._iana5w2h[row.k]||"",{x:3.08+ci*colW,y:y+.04,w:colW-0.267,h:.6,fontSize:8,color:WH,align:"center",valign:"middle",fontFace:"Calibri",margin:1,shrinkText:true});
+          }else{
+            sl.addText("✏️",{x:3.133+ci*colW,y:y+.18,w:colW-0.373,h:.32,fontSize:13,align:"center",fontFace:"Calibri",margin:0});
+          }}});
+      if(temIana5w2h)sl.addText("🤖 Coluna 1 sugerida pela Iana com base no seu plano de 30 dias — revise e ajuste como preferir.",{x:.25,y:6.95,w:12.833,h:.3,fontSize:8,italic:true,color:"7A8AAF",fontFace:"Calibri",margin:0,align:"center"});}
 
       // ── S11 CRONOGRAMA ANUAL ──────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:SL};
@@ -1270,7 +1277,11 @@ function TelaConclusao({d,set}){
       sl.addText("MENTORIA IANA",{x:.6,y:.08,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
       sl.addText("🤖  Recomendação Personalizada",{x:.6,y:.38,w:12,h:.55,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
       sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.6,y:1.35,w:12.133,h:5.6,fill:{color:WH},line:{color:SD,width:1},rectRadius:.12});
-      sl.addText(d._ianaTexto,{x:1,y:1.7,w:11.333,h:4.9,fontSize:14,color:N,fontFace:"Calibri",valign:"top",lineSpacing:22,margin:6,shrinkText:true});
+      // A fonte diminui conforme o texto da IA cresce, pra nunca vazar da caixa —
+      // não dependemos só do autofit do PowerPoint, que nem sempre recalcula sozinho.
+      const ianaLen=d._ianaTexto.length;
+      const ianaFS=ianaLen<=700?15:ianaLen<=1000?13:ianaLen<=1300?11.5:ianaLen<=1600?10.5:ianaLen<=2000?9.5:8.5;
+      sl.addText(d._ianaTexto,{x:1,y:1.65,w:11.333,h:5.15,fontSize:ianaFS,color:N,fontFace:"Calibri",valign:"top",lineSpacing:Math.round(ianaFS*1.55),margin:6,shrinkText:true});
       sl.addText("Gerado por IA a partir das suas respostas — use como ponto de partida, não como verdade absoluta.",{x:.6,y:7.05,w:12.133,h:.3,fontSize:8,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});}
 
       // ── S14 FRASE FINAL ───────────────────────────────────────
