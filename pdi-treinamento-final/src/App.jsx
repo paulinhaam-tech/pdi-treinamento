@@ -161,6 +161,18 @@ function Chips({opcoes,selecionados,onToggle,cor}){
     })}
   </div>;
 }
+function SugestoesFrase({opcoes,onEscolher,cor}){
+  return <div style={{marginTop:-4,marginBottom:12}}>
+    <div style={{fontSize:10,color:C.textLight,marginBottom:6}}>💡 Inspire-se (toque pra usar, depois edite do seu jeito):</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+      {opcoes.map((f,i)=>(
+        <button key={i} onClick={()=>onEscolher(f)} style={{padding:"6px 11px",borderRadius:10,border:`1.5px solid ${cor||C.slateDeep}`,background:C.white,color:C.textMid,fontSize:10.5,textAlign:"left",cursor:"pointer",lineHeight:1.4,maxWidth:"100%"}}>
+          {f}
+        </button>
+      ))}
+    </div>
+  </div>;
+}
 
 // ── TELA SENHA ────────────────────────────────────────────────────
 
@@ -468,6 +480,12 @@ function TelaSobre({d,set,next,prev}){
     </Card>
     <Card>
       <Campo label="Uma frase que te representa" value={s.frase} onChange={v=>set({...d,sobreMim:{...s,frase:v}})} placeholder='"Acredito que cada pessoa tem o poder de..."'/>
+      <SugestoesFrase cor={C.teal} onEscolher={f=>set({...d,sobreMim:{...s,frase:f}})} opcoes={[
+        "Acredito que cada pessoa tem o poder de transformar a própria realidade, um passo de cada vez.",
+        "Sou movido(a) por resolver problemas que ninguém mais quer encarar.",
+        "Prefiro fazer a pergunta difícil do que fingir que sei tudo.",
+        "Meu maior valor é entregar com qualidade, mesmo quando ninguém está olhando.",
+      ]}/>
     </Card>
     <Card>
       <Titulo>✨ O que me inspira</Titulo>
@@ -560,6 +578,12 @@ function TelaObjetivos({d,set,next,prev}){
         "O que você quer deixar como legado? O que as pessoas vão dizer sobre você?"
       </div>
       <Campo value={o.legado} onChange={v=>upd({legado:v})} placeholder='"Quero ser lembrado(a) como alguém que..."' multi/>
+      <SugestoesFrase cor={C.amber} onEscolher={f=>upd({legado:f})} opcoes={[
+        "Quero ser lembrado(a) como alguém que fez o time crescer junto, não sozinho(a).",
+        "Quero ser a pessoa que os outros procuram quando têm dúvida, não medo.",
+        "Quero deixar processos que funcionam mesmo quando eu não estou olhando.",
+        "Quero ser lembrado(a) por manter minha palavra, mesmo quando era difícil.",
+      ]}/>
     </Card>
     {[{prazo:"Short",label:"⚡ Curto prazo",sub:"2-3 anos",cor:C.teal},
       {prazo:"Mid",  label:"📅 Médio prazo",sub:"3-5 anos",cor:C.purple},
@@ -846,6 +870,37 @@ function TelaCompromisso({d,set,next,prev}){
 function TelaConclusao({d,set}){
   const [dlLoad,setDlLoad]=useState(false);
   const [dlMsg,setDlMsg]=useState("");
+  const [ianaStatus,setIanaStatus]=useState("carregando"); // carregando | ok | erro
+  const [ianaTexto,setIanaTexto]=useState("");
+
+  useEffect(()=>{
+    let ativo=true;
+    async function buscarIana(){
+      try{
+        const payload={
+          nome:d.nome, cargo:d.cargo, intencao:d.intencao,
+          sobreMimFrase:d.sobreMim?.frase,
+          conquista1:d.conquistas?.c1, conquista2:d.conquistas?.c2, conquista3:d.conquistas?.c3,
+          legado:d.objetivos?.legado,
+          cargoShortText:d.objetivos?.cargoShortText, cargoMidText:d.objetivos?.cargoMidText, cargoLongText:d.objetivos?.cargoLongText,
+          realidade:d.objetivos?.realidade,
+          forcas:d.swot?.forcas, fraquezas:d.swot?.fraquezas, estrategia:d.swot?.estrategia,
+          habilidades:d.habilidades, rodaVida:d.rodaVida,
+          sabotadorPrincipal:d.sabotadorPrincipal, sabMeta:d.sabMeta,
+          plano30:d.plano30?.oq?`${d.plano30.oq} (resultado esperado: ${d.plano30.resultado||"–"})`:"",
+          plano60:d.plano60?.oq?`${d.plano60.oq} (resultado esperado: ${d.plano60.resultado||"–"})`:"",
+          plano90:d.plano90?.oq?`${d.plano90.oq} (resultado esperado: ${d.plano90.resultado||"–"})`:"",
+        };
+        const res=await fetch("/api/iana",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        const j=await res.json();
+        if(!ativo)return;
+        if(j.ok && j.recomendacao){ setIanaTexto(j.recomendacao); setIanaStatus("ok"); set(prev=>({...prev,_ianaTexto:j.recomendacao})); }
+        else setIanaStatus("erro");
+      }catch(e){ if(ativo) setIanaStatus("erro"); }
+    }
+    buscarIana();
+    return ()=>{ativo=false;};
+  },[]);
   async function baixar(){
     setDlLoad(true);setDlMsg("");
     // Salvar no ranking ao baixar o PPTX
@@ -1209,6 +1264,15 @@ function TelaConclusao({d,set}){
         sl.addText(m.v,{x:1.733,y,w:10.8,h:.7,fontSize:13,color:WH,fontFace:"Calibri",valign:"middle",margin:3});});
       sl.addText("🔒  Uso pessoal · não apresentar",{x:.4,y:6.62,w:12.267,h:.3,fontSize:9,color:"607090",italic:true,fontFace:"Calibri",margin:0,align:"center"});}
 
+      // ── S13.5 RECOMENDAÇÃO DA IANA (só se carregou a tempo) ────
+      if(d._ianaTexto){const sl=prs.addSlide();sl.background={color:SL};
+      sl.addShape(prs.shapes.RECTANGLE,{x:0,y:0,w:13.333,h:1.1,fill:{color:N},line:{color:N}});
+      sl.addText("MENTORIA IANA",{x:.6,y:.08,w:12,h:.3,fontSize:8,bold:true,color:AM,charSpacing:3,fontFace:"Calibri",margin:0});
+      sl.addText("🤖  Recomendação Personalizada",{x:.6,y:.38,w:12,h:.55,fontSize:20,bold:true,color:WH,fontFace:"Calibri",margin:0});
+      sl.addShape(prs.shapes.ROUNDED_RECTANGLE,{x:.6,y:1.35,w:12.133,h:5.6,fill:{color:WH},line:{color:SD,width:1},rectRadius:.12});
+      sl.addText(d._ianaTexto,{x:1,y:1.7,w:11.333,h:4.9,fontSize:14,color:N,fontFace:"Calibri",valign:"top",lineSpacing:22,margin:6,shrinkText:true});
+      sl.addText("Gerado por IA a partir das suas respostas — use como ponto de partida, não como verdade absoluta.",{x:.6,y:7.05,w:12.133,h:.3,fontSize:8,italic:true,color:"7A8AAF",align:"center",fontFace:"Calibri",margin:0});}
+
       // ── S14 FRASE FINAL ───────────────────────────────────────
       {const sl=prs.addSlide();sl.background={color:N};
       sl.addShape(prs.shapes.OVAL,{x:-1.6,y:-1.6,w:6.8,h:6.8,fill:{color:NM,transparency:55},line:{color:NM,transparency:55}});
@@ -1233,6 +1297,13 @@ function TelaConclusao({d,set}){
       <div style={{fontWeight:800,fontSize:20,marginBottom:4}}>Seu PDI está pronto!</div>
       <div style={{color:C.slateDeep,fontSize:12}}>Parabéns, {d.nome}! Agora baixe seu PowerPoint personalizado.</div>
     </div>
+
+    <Card style={{borderLeft:`4px solid ${C.purple||"#7C3AED"}`}}>
+      <Titulo cor="#7C3AED">🤖 Recomendação da Iana</Titulo>
+      {ianaStatus==="carregando"&&<div style={{fontSize:12,color:C.textMid,display:"flex",alignItems:"center",gap:8}}>⏳ A Iana está lendo seu PDI e preparando uma recomendação pra você...</div>}
+      {ianaStatus==="erro"&&<div style={{fontSize:12,color:C.textMid,lineHeight:1.6}}>Não consegui gerar a recomendação da Iana agora — mas seu PDI está completo e pronto pra baixar do mesmo jeito.</div>}
+      {ianaStatus==="ok"&&<div style={{fontSize:12.5,color:C.navy,lineHeight:1.7,whiteSpace:"pre-line",background:C.slate,borderRadius:10,padding:14}}>{ianaTexto}</div>}
+    </Card>
 
     <Card style={{borderLeft:`4px solid ${C.amber}`}}>
       <Titulo>✍️ Sua frase de encerramento</Titulo>
@@ -1260,7 +1331,7 @@ function TelaConclusao({d,set}){
     <Card>
       <Titulo>📥 Baixar seu PDI em PowerPoint</Titulo>
       <div style={{fontSize:11,color:C.textMid,marginBottom:12,lineHeight:1.6}}>
-        15 slides profissionais — inclui slides ocultos para uso pessoal (ponto de partida, roda da vida, compromisso). Abra no PowerPoint ou Google Slides e edite como quiser!
+        Até 16 slides profissionais — inclui slides ocultos para uso pessoal (ponto de partida, roda da vida, compromisso) e a recomendação da Iana, se ela carregou a tempo. Abra no PowerPoint ou Google Slides e edite como quiser!
       </div>
       <button onClick={baixar} disabled={dlLoad} style={{width:"100%",padding:14,background:dlLoad?C.slateDeep:C.navy,color:dlLoad?C.textMid:C.white,border:"none",borderRadius:10,fontWeight:800,fontSize:14,cursor:dlLoad?"default":"pointer"}}>
         {dlLoad?"⏳ Gerando seu PowerPoint...":"📊 Baixar PDI (.pptx)"}
