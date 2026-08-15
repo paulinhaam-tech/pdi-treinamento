@@ -1390,14 +1390,14 @@ export default function App(){
   function prev(){setEtapa(e=>Math.max(e-1,0));}
 
   function sairEReiniciar(){
-    if(!confirm("Isso apaga as respostas preenchidas neste aparelho e volta para a tela de privacidade, pronta para a próxima pessoa.\n\nSe ainda não baixou o PowerPoint, as respostas serão perdidas. Confirma que quer sair?"))return;
+    if(!confirm("⚠️ Seus dados serão perdidos!\n\nAo sair, todas as respostas preenchidas neste aparelho são apagadas e a próxima pessoa vai precisar digitar a senha da turma de novo.\n\nSe ainda não baixou o PowerPoint, não vai conseguir recuperar essas respostas depois. Confirma que quer sair?"))return;
     limparRascunho();
     setDados({...INICIAL,
       _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
       _inicio:Date.now(),
     });
     setAvisoRestaurado(false);
-    setEtapa(1);
+    setEtapa(0);
   }
 
   if(showMsg)return <MsgMotivacional etapa={proxEtapa} onContinuar={()=>{setShowMsg(false);setEtapa(proxEtapa);}}/>;
