@@ -1651,6 +1651,17 @@ export default function App(){
   }
   function prev(){setEtapa(e=>Math.max(e-1,0));}
 
+  function sairEReiniciar(){
+    if(!confirm("Isso apaga as respostas preenchidas neste aparelho e volta para a tela de privacidade, pronta para a próxima pessoa.\n\nSe ainda não baixou o PowerPoint, as respostas serão perdidas. Confirma que quer sair?"))return;
+    limparRascunho();
+    setDados({...INICIAL,
+      _sid:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      _inicio:Date.now(),
+    });
+    setAvisoRestaurado(false);
+    setEtapa(1);
+  }
+
   if(showMsg)return <MsgMotivacional etapa={proxEtapa} onContinuar={()=>{setShowMsg(false);setEtapa(proxEtapa);}}/>;
 
   const telas=[
@@ -1693,7 +1704,10 @@ export default function App(){
             <div style={{fontSize:8,color:C.slateDeep,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase"}}>PDI na Prática</div>
             <div style={{fontSize:15,fontWeight:800,marginTop:1}}>{dados.nome||"Meu PDI"}</div>
           </div>
-          <div style={{background:C.amber,color:C.navy,fontWeight:800,fontSize:10,padding:"3px 10px",borderRadius:99}}>{etapa+1}/{telas.length}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{background:C.amber,color:C.navy,fontWeight:800,fontSize:10,padding:"3px 10px",borderRadius:99}}>{etapa+1}/{telas.length}</div>
+            <div onClick={sairEReiniciar} title="Sair e voltar ao início" style={{fontSize:11,color:C.slateDeep,cursor:"pointer",padding:"3px 6px",display:"flex",alignItems:"center",gap:3}}>🚪 Sair</div>
+          </div>
         </div>
         <PBar value={pct} max={100} cor={C.amber} h={4}/>
         <div style={{fontSize:10,color:C.amber,fontWeight:700,marginTop:4}}>{etapaInfo.icon} {etapaInfo.titulo}</div>
