@@ -244,6 +244,23 @@ async function dbRanking() {
   return res.ok ? res.json() : [];
 }
 
+// ── RITMO GUIADO (controle da facilitadora) ───────────────────────
+// Lê até qual etapa está liberada nesta turma. Se a tabela ainda não existir
+// ou a consulta falhar por qualquer motivo, retorna 0 (sem bloqueio) — o app
+// nunca trava por causa dessa função, mesmo antes de você configurar o recurso.
+async function dbBuscarControle() {
+  try{
+    if (!SUPABASE_URL.includes("supabase")) return 0;
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/pdi_controle?id=eq.1&select=etapa_liberada`,
+      {headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}}
+    );
+    if(!res.ok) return 0;
+    const rows = await res.json();
+    return rows?.[0]?.etapa_liberada || 0;
+  }catch(e){ return 0; }
+}
+
 // ── PONTUAÇÃO ────────────────────────────────────────────────────
 function calcPontos(d){
   let c=0,q=0;
@@ -283,6 +300,48 @@ function PBar({value,max,cor,h=6}){
   </div>;
 }
 
+
+// ── TELA SENHA (acesso da turma) ────────────────────────────────────
+function TelaSenha({next}){
+  const [senha,setSenha]=useState("");
+  const [carregando,setCarregando]=useState(false);
+  const [erro,setErro]=useState("");
+
+  const MENSAGENS_ERRO = {
+    invalida: "Senha incorreta. Confira com a facilitadora do treinamento.",
+    expirada: "Essa senha não vale mais para esta turma. Peça a senha atualizada.",
+    network: "Não conseguimos verificar agora. Confira sua internet e tente de novo.",
+    config: "Estamos com um problema técnico. Tente novamente em instantes.",
+  };
+
+  async function validar(){
+    if(!senha.trim())return;
+    setCarregando(true);setErro("");
+    try{
+      const r = await verificarSenha(senha.trim());
+      if(r.ok) next();
+      else setErro(MENSAGENS_ERRO[r.erro]||MENSAGENS_ERRO.invalida);
+    }catch(e){ setErro(MENSAGENS_ERRO.network); }
+    setCarregando(false);
+  }
+
+  return <div style={{minHeight:"100dvh",background:`linear-gradient(160deg,${C.navy} 0%,${C.navyLight} 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Inter',sans-serif"}}>
+    <div style={{width:"100%",maxWidth:340}}>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{width:58,height:58,borderRadius:"50%",background:`${C.amber}1F`,border:`2px solid ${C.amber}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:26}}>🔑</div>
+        <div style={{fontWeight:800,fontSize:22,color:C.white}}>PDI na Prática</div>
+        <div style={{fontSize:12,color:C.slateDeep,marginTop:6,lineHeight:1.5}}>Digite a senha desta turma, informada pela facilitadora.</div>
+      </div>
+      <input value={senha} onChange={e=>{setSenha(e.target.value);setErro("");}} onKeyDown={e=>e.key==="Enter"&&validar()}
+        placeholder="Senha da turma" autoCapitalize="characters"
+        style={{width:"100%",padding:"14px 16px",border:`2px solid ${erro?C.red:C.navyLight}`,borderRadius:12,fontSize:16,textAlign:"center",letterSpacing:2,outline:"none",background:C.navyMid,color:C.white,fontFamily:"inherit",marginBottom:10}}/>
+      {erro&&<div style={{fontSize:11.5,color:C.red,background:`${C.red}18`,borderRadius:9,padding:"9px 12px",marginBottom:10,lineHeight:1.5}}>⚠️ {erro}</div>}
+      <button onClick={validar} disabled={carregando||!senha.trim()} style={{width:"100%",padding:14,background:carregando||!senha.trim()?C.navyMid:C.amber,color:carregando||!senha.trim()?C.slateDeep:C.navy,border:"none",borderRadius:12,fontWeight:800,fontSize:14.5,cursor:carregando?"default":"pointer"}}>
+        {carregando?"Verificando...":"Entrar →"}
+      </button>
+    </div>
+  </div>;
+}
 
 // ── TELA LGPD ─────────────────────────────────────────────────────
 function TelaLGPD({next}){
@@ -1528,9 +1587,15 @@ export default function App(){
   if(qs.includes("ranking=1"))return <TelaRanking/>;
   if(qs.includes("rh=1"))return <DashboardRH/>;
   if(qs.includes("revisao=1"))return <TelaRevisao/>;
-  if(ACESSO_ATE && new Date() > new Date(`${ACESSO_ATE}T23:59:59`)) return <TelaEncerrado/>;
+  // ?admin=1 sempre ignora o encerramento — use esse link pra continuar
+  // acessando o app mesmo depois de travar o acesso dos participantes.
+  const acessoAdmin = qs.includes("admin=1");
+  if(!acessoAdmin && ACESSO_ATE && new Date() > new Date(`${ACESSO_ATE}T23:59:59`)) return <TelaEncerrado/>;
 
-  const[etapa,setEtapa]=useState(()=>{const r=lerRascunho();return typeof r?.etapa==="number"?r.etapa:0;});
+  const[etapa,setEtapa]=useState(()=>{
+    if(acessoAdmin) return 1;
+    const r=lerRascunho();return typeof r?.etapa==="number"?r.etapa:0;
+  });
   const[dados,setDados]=useState(()=>{
     const r=lerRascunho();
     if(r?.dados&&r.dados._sid)return {...INICIAL,...r.dados};
@@ -1543,13 +1608,27 @@ export default function App(){
   const[proxEtapa,setProxEtapa]=useState(0);
   const[restaurado]=useState(()=>{const r=lerRascunho();return !!(r?.dados&&r.dados._sid&&r.etapa>0);});
   const[avisoRestaurado,setAvisoRestaurado]=useState(restaurado);
+  const[etapaLiberada,setEtapaLiberada]=useState(0); // 0 = sem bloqueio ativo
+  const[avisoBloqueio,setAvisoBloqueio]=useState(false);
 
   // Guarda o rascunho no próprio aparelho, para não perder em recarregamento acidental
   useEffect(()=>{ if(etapa>0) salvarRascunho(etapa,dados); },[etapa,dados]);
 
+  // Consulta o controle da facilitadora (se ela estiver usando o ritmo guiado nesta turma)
+  useEffect(()=>{
+    let ativo=true;
+    async function checar(){
+      const v=await dbBuscarControle();
+      if(ativo) setEtapaLiberada(v);
+    }
+    checar();
+    const t=setInterval(checar,8000);
+    return ()=>{ativo=false;clearInterval(t);};
+  },[]);
+
   // Avisa antes de recarregar/fechar, para não perder o preenchimento sem querer
   useEffect(()=>{
-    const comecou = etapa>0 && etapa<13;
+    const comecou = etapa>0 && etapa<14;
     if(!comecou) return;
     const aviso=e=>{e.preventDefault();e.returnValue="";};
     window.addEventListener("beforeunload",aviso);
@@ -1557,6 +1636,12 @@ export default function App(){
   },[etapa]);
 
   function ir(p){
+    // Ritmo guiado: se a facilitadora travou o avanço, impede pular além do liberado
+    if(etapaLiberada>0 && p>etapaLiberada-1){
+      setAvisoBloqueio(true);
+      setTimeout(()=>setAvisoBloqueio(false), 4000);
+      return;
+    }
     try{ dbSalvar(dados,calcPontos(dados)); }catch(e){}
     if(p>2&&p%3===0&&p<telas.length-1){setProxEtapa(p);setShowMsg(true);}
     else setEtapa(p);
@@ -1566,24 +1651,25 @@ export default function App(){
   if(showMsg)return <MsgMotivacional etapa={proxEtapa} onContinuar={()=>{setShowMsg(false);setEtapa(proxEtapa);}}/>;
 
   const telas=[
-    <TelaLGPD next={()=>ir(1)}/>,
-    <TelaInicio d={dados} set={setDados} next={()=>ir(2)} prev={()=>setEtapa(0)}/>,
-    <TelaSobre d={dados} set={setDados} next={()=>ir(3)} prev={()=>setEtapa(1)}/>,
-    <TelaConquistas d={dados} set={setDados} next={()=>ir(4)} prev={()=>setEtapa(2)}/>,
-    <TelaJornada d={dados} set={setDados} next={()=>ir(5)} prev={()=>setEtapa(3)}/>,
-    <TelaObjetivos d={dados} set={setDados} next={()=>ir(6)} prev={()=>setEtapa(4)}/>,
-    <TelaSwot d={dados} set={setDados} next={()=>ir(7)} prev={()=>setEtapa(5)}/>,
-    <TelaHabilidades d={dados} set={setDados} next={()=>ir(8)} prev={()=>setEtapa(6)}/>,
-    <TelaRoda d={dados} set={setDados} next={()=>ir(9)} prev={()=>setEtapa(7)}/>,
-    <TelaSabotador d={dados} set={setDados} next={()=>ir(10)} prev={()=>setEtapa(8)}/>,
-    <TelaSabResult d={dados} set={setDados} next={()=>ir(11)} prev={()=>setEtapa(9)}/>,
-    <TelaPlano d={dados} set={setDados} next={()=>ir(12)} prev={()=>setEtapa(10)}/>,
-    <TelaCompromisso d={dados} set={setDados} next={()=>ir(13)} prev={()=>setEtapa(11)}/>,
+    <TelaSenha next={()=>setEtapa(1)}/>,
+    <TelaLGPD next={()=>ir(2)}/>,
+    <TelaInicio d={dados} set={setDados} next={()=>ir(3)} prev={()=>setEtapa(1)}/>,
+    <TelaSobre d={dados} set={setDados} next={()=>ir(4)} prev={()=>setEtapa(2)}/>,
+    <TelaConquistas d={dados} set={setDados} next={()=>ir(5)} prev={()=>setEtapa(3)}/>,
+    <TelaJornada d={dados} set={setDados} next={()=>ir(6)} prev={()=>setEtapa(4)}/>,
+    <TelaObjetivos d={dados} set={setDados} next={()=>ir(7)} prev={()=>setEtapa(5)}/>,
+    <TelaSwot d={dados} set={setDados} next={()=>ir(8)} prev={()=>setEtapa(6)}/>,
+    <TelaHabilidades d={dados} set={setDados} next={()=>ir(9)} prev={()=>setEtapa(7)}/>,
+    <TelaRoda d={dados} set={setDados} next={()=>ir(10)} prev={()=>setEtapa(8)}/>,
+    <TelaSabotador d={dados} set={setDados} next={()=>ir(11)} prev={()=>setEtapa(9)}/>,
+    <TelaSabResult d={dados} set={setDados} next={()=>ir(12)} prev={()=>setEtapa(10)}/>,
+    <TelaPlano d={dados} set={setDados} next={()=>ir(13)} prev={()=>setEtapa(11)}/>,
+    <TelaCompromisso d={dados} set={setDados} next={()=>ir(14)} prev={()=>setEtapa(12)}/>,
     <TelaConclusao d={dados} set={setDados}/>,
   ];
 
   const pct=Math.round((etapa/(telas.length-1))*100);
-  const etapaInfo=ETAPAS[etapa+1]||ETAPAS[ETAPAS.length-1];
+  const etapaInfo=ETAPAS[etapa]||ETAPAS[ETAPAS.length-1];
 
   return <div style={{fontFamily:"'Inter','Segoe UI',sans-serif",background:C.slate,minHeight:"100dvh",color:C.text}}>
     <style>{`html,body{overscroll-behavior-y:none;background:${C.slate}}*{box-sizing:border-box}input,textarea{font-family:inherit}input[type=range]{-webkit-appearance:none;height:6px;border-radius:99px;outline:none;background:${C.slateDeep}}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:${C.amber};cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}`}</style>
@@ -1591,6 +1677,10 @@ export default function App(){
     {etapa>0&&avisoRestaurado&&<div style={{background:C.green,color:C.white,padding:"9px 16px",fontSize:11.5,fontWeight:700,textAlign:"center",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
       <span>✅ Continuando de onde você parou — nada foi perdido.</span>
       <span onClick={()=>setAvisoRestaurado(false)} style={{cursor:"pointer",opacity:.85,flexShrink:0}}>✕</span>
+    </div>}
+
+    {etapa>0&&avisoBloqueio&&<div style={{background:C.red,color:C.white,padding:"9px 16px",fontSize:11.5,fontWeight:700,textAlign:"center"}}>
+      ⏳ Aguarde a facilitadora liberar a próxima etapa.
     </div>}
 
     {etapa>0&&<>
@@ -1609,17 +1699,20 @@ export default function App(){
         {ETAPAS.slice(1).map((e,i)=>{
           const jaVisitou = i+1<etapa;
           const futura = i+1>etapa;
-          return <div key={e.id} title={jaVisitou?`Revisar: ${e.titulo}`:futura?`Ir para: ${e.titulo}`:e.titulo}
-            onClick={()=>setEtapa(i+1)}
-            style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,cursor:"pointer",
+          const travada = etapaLiberada>0 && (i+1)>etapaLiberada;
+          return <div key={e.id} title={travada?`Ainda travado: ${e.titulo}`:jaVisitou?`Revisar: ${e.titulo}`:futura?`Ir para: ${e.titulo}`:e.titulo}
+            onClick={()=>ir(i+1)}
+            style={{fontSize:13,padding:"4px 7px",borderRadius:8,flexShrink:0,cursor:"pointer",position:"relative",
             background:i+1===etapa?C.amber:jaVisitou?`${C.green}55`:"transparent",
             border:`1px solid ${i+1===etapa?C.amber:jaVisitou?`${C.green}88`:C.navyLight}`,
-            opacity:futura?.65:1}}>
-            {e.icon}
+            opacity:travada?.4:futura?.65:1}}>
+            {travada?"🔒":e.icon}
           </div>;
         })}
       </div>
-      <div style={{fontSize:9.5,color:C.slateDeep,textAlign:"center",padding:"3px 14px 0",background:C.navyMid}}>💡 toque em qualquer ícone pra ir direto pra aquela etapa</div>
+      <div style={{fontSize:9.5,color:C.slateDeep,textAlign:"center",padding:"3px 14px 0",background:C.navyMid}}>
+        {etapaLiberada>0?`💡 a facilitadora libera as próximas etapas ao vivo`:`💡 toque em qualquer ícone pra ir direto pra aquela etapa`}
+      </div>
     </>}
 
     <div style={{padding:etapa===0?0:14}}>{telas[etapa]}</div>
