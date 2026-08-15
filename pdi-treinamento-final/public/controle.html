@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle do Ritmo · PDI na Prática</title>
+<style>
+  :root{
+    --navy:#0F1D3A; --navy-mid:#1A3160; --navy-light:#234080;
+    --amber:#F5A623; --slate:#EEF2FA; --slate-deep:#C5D0E6;
+    --white:#FFFFFF; --green:#1DB87A; --red:#E05252; --text-mid:#4A5A7A;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;min-height:100vh;background:var(--navy);}
+  .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .gate-box{background:var(--navy-mid);border-radius:16px;padding:32px;width:320px;text-align:center;}
+  .gate-emoji{font-size:36px;margin-bottom:12px;}
+  .gate-title{font-weight:800;font-size:18px;color:var(--white);margin-bottom:8px;}
+  .gate-sub{font-size:12px;color:var(--slate-deep);margin-bottom:20px;}
+  .gate-input{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--navy-light);background:var(--navy);color:var(--white);font-size:14px;outline:none;font-family:inherit;margin-bottom:12px;}
+  .gate-btn{width:100%;padding:12px;background:var(--amber);color:var(--navy);border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;}
+  .gate-erro{color:#FF8A8A;font-size:11px;margin-top:10px;min-height:14px;}
+
+  .wrap{max-width:520px;margin:0 auto;padding:24px 18px 60px;}
+  .header{text-align:center;margin-bottom:20px;}
+  .kicker{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:6px;}
+  .title{font-size:24px;font-weight:800;color:#fff;}
+
+  .status{background:var(--navy-mid);border-radius:14px;padding:18px;text-align:center;margin-bottom:18px;}
+  .status-lbl{font-size:10px;color:var(--slate-deep);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+  .status-val{font-size:20px;font-weight:800;color:var(--amber);}
+  .status-val.livre{color:var(--green);}
+
+  .destravar{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:22px;}
+  .destravar:disabled{opacity:.5;cursor:default;}
+
+  .lista-lbl{font-size:11px;color:var(--slate-deep);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;padding-left:2px;}
+  .etapa-btn{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;border:1.5px solid var(--navy-light);background:var(--navy-mid);color:#fff;margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;font-size:14px;}
+  .etapa-btn.ativa{border-color:var(--amber);background:#F5A62322;}
+  .etapa-btn.passada{opacity:.55;}
+  .etapa-num{width:26px;height:26px;border-radius:50%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;}
+  .etapa-btn.ativa .etapa-num{background:var(--amber);color:var(--navy);}
+  .etapa-nome{flex:1;font-weight:600;}
+  .etapa-tag{font-size:9px;font-weight:800;padding:3px 8px;border-radius:99px;background:var(--amber);color:var(--navy);flex-shrink:0;}
+
+  .rodape{text-align:center;color:var(--slate-deep);font-size:10.5px;margin-top:20px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-emoji">🎛️</div>
+    <div class="gate-title">Controle do Ritmo</div>
+    <div class="gate-sub">Acesso restrito — Facilitadora</div>
+    <input id="gate-senha" type="password" class="gate-input" placeholder="Senha de acesso">
+    <button id="gate-btn" class="gate-btn">Entrar</button>
+    <div id="gate-erro" class="gate-erro"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="wrap">
+    <div class="header">
+      <div class="kicker">PDI na Prática</div>
+      <div class="title">🎛️ Controle do Ritmo</div>
+    </div>
+
+    <div class="status">
+      <div class="status-lbl">Situação atual</div>
+      <div class="status-val" id="status-texto">Carregando...</div>
+    </div>
+
+    <button class="destravar" id="btn-destravar">🔓 Destravar tudo (fim do bloqueio)</button>
+
+    <div class="lista-lbl">Liberar até a etapa:</div>
+    <div id="lista-etapas"></div>
+
+    <div class="rodape">
+      Cada participante consulta esse controle a cada ~8 segundos.<br>
+      "Destravar tudo" libera o app pro ritmo livre normal, sem nenhum bloqueio.
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://odcmxytazbtwbdjqbosc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HbzbOANXyabiwQ7bEjJB3w_X3CxAYkH";
+const RH_SENHA = "pdi2026rh"; // mesma senha do dashboard RH
+
+const ETAPAS = [
+  "Boas-vindas & Privacidade","Dados Iniciais","Sobre Mim","Minhas Conquistas",
+  "Minha Jornada","Meus Objetivos","SWOT Pessoal","Habilidades do Futuro",
+  "Roda da Vida","Descubra seu Sabotador","Resultado do Sabotador",
+  "Plano de Ação","Compromisso & Medida de Sucesso","Conclusão & Download",
+];
+
+let etapaAtual = 0;
+
+async function buscarControle(){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_controle?id=eq.1&select=etapa_liberada`,
+      { headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}` } });
+    if(!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0]?.etapa_liberada ?? 0;
+  }catch(e){ return null; }
+}
+
+async function definirControle(valor){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/pdi_controle?id=eq.1`, {
+    method:"PATCH",
+    headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}`, "Content-Type":"application/json", "Prefer":"return=representation" },
+    body: JSON.stringify({ etapa_liberada: valor, atualizado_em: new Date().toISOString() })
+  });
+  return res.ok;
+}
+
+function render(){
+  const statusEl = document.getElementById("status-texto");
+  if(etapaAtual===0){
+    statusEl.textContent = "🟢 Sem bloqueio — ritmo livre";
+    statusEl.className = "status-val livre";
+  } else {
+    statusEl.textContent = `🔒 Liberado até: ${ETAPAS[etapaAtual-1]}`;
+    statusEl.className = "status-val";
+  }
+
+  const lista = document.getElementById("lista-etapas");
+  lista.innerHTML = "";
+  ETAPAS.forEach((nome, i)=>{
+    const n = i+1;
+    const btn = document.createElement("button");
+    btn.className = "etapa-btn" + (n===etapaAtual?" ativa":"") + (etapaAtual>0 && n<etapaAtual?" passada":"");
+    btn.innerHTML = `<span class="etapa-num">${n}</span><span class="etapa-nome">${nome}</span>${n===etapaAtual?'<span class="etapa-tag">LIBERADO ATÉ AQUI</span>':""}`;
+    btn.addEventListener("click", async ()=>{
+      btn.disabled = true;
+      const ok = await definirControle(n);
+      if(ok){ etapaAtual = n; render(); }
+      else alert("Não consegui atualizar. Verifique sua conexão e tente de novo.");
+      btn.disabled = false;
+    });
+    lista.appendChild(btn);
+  });
+
+  document.getElementById("btn-destravar").disabled = etapaAtual===0;
+}
+
+async function carregar(){
+  const v = await buscarControle();
+  if(v===null){
+    document.getElementById("status-texto").textContent = "⚠️ Não consegui ler o controle";
+    document.getElementById("status-texto").className = "status-val";
+    return;
+  }
+  etapaAtual = v;
+  render();
+}
+
+async function entrar(){
+  const senha = document.getElementById("gate-senha").value;
+  const erroEl = document.getElementById("gate-erro");
+  if(senha !== RH_SENHA){ erroEl.textContent = "Senha incorreta."; return; }
+  erroEl.textContent = "";
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  await carregar();
+}
+
+document.getElementById("gate-btn").addEventListener("click", entrar);
+document.getElementById("gate-senha").addEventListener("keydown", e=>{ if(e.key==="Enter") entrar(); });
+
+document.getElementById("btn-destravar").addEventListener("click", async ()=>{
+  const btn = document.getElementById("btn-destravar");
+  btn.disabled = true; btn.textContent = "⏳ Destravando...";
+  const ok = await definirControle(0);
+  if(ok){ etapaAtual = 0; render(); }
+  else alert("Não consegui destravar. Verifique sua conexão e tente de novo.");
+  btn.textContent = "🔓 Destravar tudo (fim do bloqueio)";
+});
+</script>
+</body>
+</html>
